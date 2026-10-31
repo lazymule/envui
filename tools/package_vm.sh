@@ -15,7 +15,7 @@ trap 'rm -rf "$WORK"' EXIT
 
 echo "Building envui.exe..."
 (cd "$ROOT" && CGO_ENABLED=1 GOOS=windows GOARCH=amd64 CC=x86_64-w64-mingw32-gcc \
-  go build -ldflags "-H=windowsgui -s -w" -o "$WORK/envui.exe" .)
+  go build -ldflags "-H=windowsgui -s -w ${EXTRA_LDFLAGS:-}" -o "$WORK/envui.exe" .)
 
 echo "Downloading Mesa $MESA_VERSION..."
 curl -fL -o "$WORK/mesa.7z" \
