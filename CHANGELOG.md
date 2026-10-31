@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Refreshed UI: custom light/dark theme (remembered between runs), header bar, file sidebar and status bar
+- Search box to filter variables by name or value
+- Variables listed in `.env.example` / `.env.sample` / `.env.template` but missing from the current file are shown and can be added with one click
+- Optional display of shell environment variables
+- "New .env file" action (optionally copying a template) and an empty state when a folder has no env files
+- Reload from disk, copy value to clipboard, keyboard shortcuts (Ctrl+S / N / F / O)
+- Unsaved-changes prompt when quitting, reloading or opening another folder
+
+### Fixed
+
+- Table header columns now line up with the table
+- Clicking the same row twice now reopens the editor
+- Deleting a variable closes the edit dialog and asks for confirmation
+- Long or non-ASCII values (e.g. Turkish characters) are no longer cut off incorrectly
+- Invalid or duplicate variable names are rejected
+
 ## [0.1.0] - 2025-12-11
 
 ### Added

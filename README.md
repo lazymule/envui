@@ -16,13 +16,29 @@ Managing .env files sucks:
 
 envui gives you a visual editor to manage environment variables across multiple .env files.
 
+![envui dark theme](docs/screenshot-dark.png)
+
 ## Features
 
-- **Visual Editor** - Table view of all variables, click to edit inline
+- **Visual Editor** - Table view of all variables, click a row to edit
 - **Secret Masking** - Auto-detect and mask sensitive values (API_KEY, PASSWORD, TOKEN, etc.)
 - **Multi-file Support** - Switch between `.env`, `.env.local`, `.env.staging`, etc.
+- **Missing Variables** - Keys in `.env.example` that aren't set are highlighted; click one to add it
 - **Source Tracking** - See which variables come from file vs shell environment
+- **Search** - Filter variables by name or value
+- **Light & Dark Themes** - Toggle from the header; your choice is remembered
 - **Comment Preservation** - Your comments stay intact when saving
+
+### Keyboard shortcuts
+
+| Shortcut | Action |
+| --- | --- |
+| `Ctrl+S` | Save all changed files |
+| `Ctrl+N` | Add a variable |
+| `Ctrl+F` | Search |
+| `Ctrl+O` | Open a folder |
+
+(`Cmd` instead of `Ctrl` on macOS.)
 
 ## Installation
 
@@ -38,6 +54,21 @@ go build -o envui .
 
 - Go 1.21 or later
 - For building on Linux, you may need: `libgl1-mesa-dev xorg-dev`
+
+### Building for Windows
+
+Natively (with a C compiler such as [TDM-GCC](https://jmeubank.github.io/tdm-gcc/) or MSYS2 on the PATH):
+
+```bash
+go build -ldflags "-H=windowsgui" -o envui.exe .
+```
+
+Cross-compiling from Linux (needs `gcc-mingw-w64-x86-64`):
+
+```bash
+CGO_ENABLED=1 GOOS=windows GOARCH=amd64 CC=x86_64-w64-mingw32-gcc \
+  go build -ldflags "-H=windowsgui -s -w" -o envui.exe .
+```
 
 ## Usage
 
