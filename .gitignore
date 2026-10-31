@@ -24,3 +24,6 @@ envui
 
 # Fyne packaging
 fyne-cross/
+
+# Release packages
+dist/

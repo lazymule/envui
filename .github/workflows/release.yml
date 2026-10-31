@@ -1,0 +1,97 @@
+name: Release
+
+# Pushing a tag such as v0.2.0 builds envui and publishes a GitHub release.
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Existing tag to (re)build the release for, e.g. v0.2.0"
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    env:
+      TAG: ${{ github.event.inputs.tag || github.ref_name }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.TAG }}
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgl1-mesa-dev xorg-dev gcc-mingw-w64-x86-64 p7zip-full zip
+
+      - name: Test
+        run: go test ./...
+
+      - name: Build
+        run: |
+          VERSION="${TAG#v}"
+          LDFLAGS="-s -w -X github.com/mrf/envui/ui.Version=${VERSION}"
+          mkdir -p dist
+
+          # Windows (icon + version info come from rsrc_windows_amd64.syso)
+          CGO_ENABLED=1 GOOS=windows GOARCH=amd64 CC=x86_64-w64-mingw32-gcc \
+            go build -ldflags "-H=windowsgui ${LDFLAGS}" -o dist/envui.exe .
+
+          # Windows package for virtual machines / Remote Desktop (with Mesa)
+          EXTRA_LDFLAGS="-X github.com/mrf/envui/ui.Version=${VERSION}" tools/package_vm.sh
+
+          # Linux
+          go build -ldflags "${LDFLAGS}" -o dist/envui .
+          tar -C dist -czf dist/envui-linux-amd64.tar.gz envui
+
+          cd dist
+          mv envui.exe envui-windows-amd64.exe
+          sha256sum envui-windows-amd64.exe envui-windows-vm.zip envui-linux-amd64.tar.gz > SHA256SUMS.txt
+          cat SHA256SUMS.txt
+
+      - name: Release notes
+        run: |
+          VERSION="${TAG#v}"
+          {
+            echo "## İndirme / Downloads"
+            echo
+            echo "| Dosya | Ne zaman? |"
+            echo "| --- | --- |"
+            echo "| \`envui-windows-amd64.exe\` | Windows (ekran kartı olan normal bilgisayarlar) |"
+            echo "| \`envui-windows-vm.zip\` | Windows sanal makine / Uzak Masaüstü — \"WGL: The driver does not appear to support OpenGL\" hatası alıyorsanız. Üç dosyayı aynı klasöre çıkarın. |"
+            echo "| \`envui-linux-amd64.tar.gz\` | Linux (x86-64) |"
+            echo
+            echo "## Değişiklikler / Changes"
+            echo
+            # the section of CHANGELOG.md for this version
+            awk -v v="$VERSION" '
+              $0 ~ "^## \\[" v "\\]" {on=1; next}
+              on && /^## \[/ {exit}
+              on {print}
+            ' CHANGELOG.md
+            echo
+            echo "---"
+            echo
+            echo "Bu proje, Mark Ferree'nin [mrf/envui](https://github.com/mrf/envui) projesinden çatallanmıştır. Teşekkürler! / Forked from [mrf/envui](https://github.com/mrf/envui) by Mark Ferree — thank you!"
+          } > release-notes.md
+          cat release-notes.md
+
+      - name: Publish release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ env.TAG }}
+          name: envui ${{ env.TAG }}
+          body_path: release-notes.md
+          files: |
+            dist/envui-windows-amd64.exe
+            dist/envui-windows-vm.zip
+            dist/envui-linux-amd64.tar.gz
+            dist/SHA256SUMS.txt
