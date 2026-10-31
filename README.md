@@ -1,134 +1,157 @@
 # envui
 
-A visual .env file editor built with Go and Fyne.
+**Türkçe** | [English](README.en.md)
 
-![Go Version](https://img.shields.io/badge/Go-1.21+-00ADD8?style=flat&logo=go)
-![License](https://img.shields.io/badge/License-MIT-blue.svg)
+Go ve Fyne ile yazılmış, `.env` dosyaları için görsel bir düzenleyici.
 
-## Why?
+![Go Sürümü](https://img.shields.io/badge/Go-1.23+-00ADD8?style=flat&logo=go)
+![Lisans](https://img.shields.io/badge/Lisans-MIT-blue.svg)
 
-Managing .env files sucks:
+## Neden?
 
-- Which vars are missing vs `.env.example`?
-- What's inherited from shell vs explicit?
-- Did I accidentally commit a secret?
-- What's different between local and staging?
+`.env` dosyalarını yönetmek can sıkıcı:
 
-envui gives you a visual editor to manage environment variables across multiple .env files.
+- `.env.example` dosyasına göre hangi değişkenler eksik?
+- Hangisi dosyada tanımlı, hangisi sistemden geliyor?
+- Yanlışlıkla bir şifreyi commit ettim mi?
+- Yerel ortam ile staging arasında ne fark var?
 
-![envui dark theme](docs/screenshot-dark.png)
+envui, birden fazla `.env` dosyasındaki ortam değişkenlerini tek bir pencereden görüp düzenlemenizi sağlar.
 
-## Features
+![envui Türkçe arayüz](docs/screenshot-tr.png)
 
-- **Visual Editor** - Table view of all variables, click a row to edit
-- **Secret Masking** - Auto-detect and mask sensitive values (API_KEY, PASSWORD, TOKEN, etc.)
-- **Multi-file Support** - Switch between `.env`, `.env.local`, `.env.staging`, etc.
-- **Missing Variables** - Keys in `.env.example` that aren't set are highlighted; click one to add it
-- **Source Tracking** - See which variables come from file vs shell environment
-- **Search** - Filter variables by name or value
-- **Light & Dark Themes** - Toggle from the header; your choice is remembered
-- **Languages** - English and Turkish (Türkçe); picked from your system language and changeable in Settings
-- **Comment Preservation** - Your comments stay intact when saving
+## Özellikler
 
-### Keyboard shortcuts
+- **Görsel düzenleyici**: Tüm değişkenler tabloda listelenir, düzenlemek için satıra tıklamanız yeterli.
+- **Gizli değer maskeleme**: API_KEY, PASSWORD, TOKEN gibi hassas değerler otomatik algılanır ve gizlenir.
+- **Çoklu dosya desteği**: `.env`, `.env.local`, `.env.staging` gibi dosyalar arasında geçiş yapabilirsiniz.
+- **Eksik değişkenler**: `.env.example` dosyasında olup sizin dosyanızda olmayan değişkenler işaretlenir. Tıklayarak örnek değerle ekleyebilirsiniz.
+- **Kaynak takibi**: Değişkenin dosyadan mı yoksa sistemden mi geldiği görünür.
+- **Arama**: Değişkenleri ada veya değere göre filtreleyebilirsiniz.
+- **Açık ve koyu tema**: Seçiminiz bir sonraki açılışta da geçerli olur.
+- **Dil desteği**: Türkçe ve İngilizce. Sistem diline göre otomatik seçilir, Ayarlar'dan değiştirilebilir.
+- **Klasör hatırlama**: Klasör seçme penceresi en son açtığınız projenin yanından başlar.
+- **Yorumlar korunur**: Kaydederken dosyadaki yorum satırlarınız silinmez.
 
-| Shortcut | Action |
+### Klavye kısayolları
+
+| Kısayol | İşlev |
 | --- | --- |
-| `Ctrl+S` | Save all changed files |
-| `Ctrl+N` | Add a variable |
-| `Ctrl+F` | Search |
-| `Ctrl+O` | Open a folder |
+| `Ctrl+S` | Değişen tüm dosyaları kaydet |
+| `Ctrl+N` | Değişken ekle |
+| `Ctrl+F` | Ara |
+| `Ctrl+O` | Klasör aç |
 
-(`Cmd` instead of `Ctrl` on macOS.)
+macOS'ta `Ctrl` yerine `Cmd` kullanılır.
 
-## Installation
+## Kurulum
 
-### From Source
+### Kaynaktan derleme
 
 ```bash
-git clone https://github.com/mrf/envui.git
+git clone https://github.com/lazymule/envui.git
 cd envui
 go build -o envui .
 ```
 
-### Requirements
+### Gereksinimler
 
-- Go 1.21 or later
-- For building on Linux, you may need: `libgl1-mesa-dev xorg-dev`
+- Go 1.23 veya üstü
+- Bir C derleyicisi (Fyne, cgo kullanır)
+- Linux'ta ek olarak şu paketler gerekebilir: `libgl1-mesa-dev xorg-dev`
 
-### Building for Windows
+### Windows için derleme
 
-Natively (with a C compiler such as [TDM-GCC](https://jmeubank.github.io/tdm-gcc/) or MSYS2 on the PATH):
+Windows'ta doğrudan derlemek için PATH'te bir C derleyicisi olmalı ([TDM-GCC](https://jmeubank.github.io/tdm-gcc/) veya MSYS2 gibi):
 
 ```bash
 go build -ldflags "-H=windowsgui" -o envui.exe .
 ```
 
-Cross-compiling from Linux (needs `gcc-mingw-w64-x86-64`):
+Linux'tan Windows için derlemek isterseniz `gcc-mingw-w64-x86-64` paketi gerekir:
 
 ```bash
 CGO_ENABLED=1 GOOS=windows GOARCH=amd64 CC=x86_64-w64-mingw32-gcc \
   go build -ldflags "-H=windowsgui -s -w" -o envui.exe .
 ```
 
-## Usage
+## Kullanım
+
+Programı açıp bir klasör seçin:
 
 ```bash
-# Open the app and select a folder
 ./envui
-
-# Or open a specific project directory
-./envui ~/Projects/my-app
 ```
 
-### Keyboard Shortcuts
+Ya da bir proje klasörünü doğrudan açın:
 
-- Click on any variable row to edit
-- Use the "Show Secrets" checkbox to reveal masked values
+```bash
+./envui ~/Projeler/uygulamam
+```
 
-## Supported Files
+Windows'ta `envui.exe` dosyasına çift tıklamanız yeterli.
 
-envui automatically discovers these files:
+## Ayarlar
+
+Başlıktaki ⚙ simgesiyle açılır:
+
+- **Dil**: Türkçe veya English. Arayüz anında yenilenir, açık proje ve kaydedilmemiş değişiklikler kaybolmaz.
+- **Tema**: Açık veya Koyu.
+- **Açılışta**: Sistem değişkenlerinin ve gizli değerlerin gösterilip gösterilmeyeceği.
+
+Klasör seçme penceresi Fyne'ın kendi bileşeni olduğu için her zaman İngilizce görünür.
+
+## Desteklenen dosyalar
+
+envui şu dosyaları otomatik olarak bulur:
 
 - `.env`
 - `.env.local`
 - `.env.development`
 - `.env.staging`
 - `.env.production`
+- `.env.prod`
 - `.env.example`
 - `.env.sample`
 - `.env.template`
 - `.env.test`
 
-## Secret Detection
+`.env.example`, `.env.sample` ve `.env.template` şablon dosyası olarak kabul edilir. Eksik değişkenler bunlara göre belirlenir.
 
-Variables matching these patterns are automatically masked:
+## Gizli değer algılama
+
+Adında şu ifadeler geçen değişkenler otomatik olarak maskelenir:
 
 - `PASSWORD`, `SECRET`, `TOKEN`
 - `API_KEY`, `APIKEY`, `API_SECRET`
 - `PRIVATE_KEY`, `ACCESS_KEY`
 - `AUTH`, `CREDENTIAL`, `DSN`
 
-## Building
+## Geliştirme
 
 ```bash
-# Development
+# Çalıştır
 go run .
 
-# Build binary
+# Derle
 go build -o envui .
 
-# Run tests
+# Testleri çalıştır
 go test ./...
-
-# macOS app bundle (optional)
-fyne package -os darwin -icon icon.png
 ```
 
-## Contributing
+Yeni bir dil eklemek için `ui/i18n.go` dosyasındaki `messages` tablosuna bir bölüm ve `languages` listesine bir satır eklemeniz yeterli. Testler, eksik çeviri kaldıysa uyarır.
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+## Katkıda bulunma
 
-## License
+Kurallar için [CONTRIBUTING.md](CONTRIBUTING.md) dosyasına bakın.
 
-MIT License - see [LICENSE](LICENSE) for details.
+## Teşekkürler
+
+Bu proje, **Mark Ferree**'nin [mrf/envui](https://github.com/mrf/envui) projesinden çatallanmıştır. Temeli oluşturan `.env` ayrıştırıcısı, yorum koruyan yazıcı ve ilk arayüz onun emeğidir. Projeyi açık kaynak olarak paylaştığı için kendisine çok teşekkür ederiz. 🙏
+
+Bu çatalda arayüz yenilendi, Türkçe dil desteği, Ayarlar penceresi ve birçok küçük iyileştirme eklendi. Ayrıntılar için [CHANGELOG.md](CHANGELOG.md) dosyasına bakabilirsiniz.
+
+## Lisans
+
+MIT Lisansı. Ayrıntılar için [LICENSE](LICENSE) dosyasına bakın.

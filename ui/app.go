@@ -14,6 +14,7 @@ import (
 	"fyne.io/fyne/v2/dialog"
 	"fyne.io/fyne/v2/driver/desktop"
 	"fyne.io/fyne/v2/layout"
+	"fyne.io/fyne/v2/storage"
 	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 
@@ -25,6 +26,7 @@ const (
 	prefLanguage    = "language"
 	prefShowShell   = "showShellOnStart"
 	prefShowSecrets = "showSecretsOnStart"
+	prefLastFolder  = "lastFolder"
 )
 
 // themedRect is a background rectangle whose colour follows the theme.
@@ -107,6 +109,7 @@ func (a *App) LoadProject(path string) error {
 		return err
 	}
 	a.project = project
+	a.fyneApp.Preferences().SetString(prefLastFolder, abs)
 	a.showView()
 	if len(project.Files) > 0 {
 		a.fileList.UnselectAll()
@@ -563,9 +566,32 @@ func (a *App) onOpen() {
 				a.showError(err)
 			}
 		}, a.window)
+		if loc := a.folderDialogStart(); loc != nil {
+			d.SetLocation(loc)
+		}
 		d.Resize(fyne.NewSize(760, 520))
 		d.Show()
 	})
+}
+
+// folderDialogStart returns where the folder picker should open: the parent
+// of the last opened project, so that project and its siblings are visible.
+// Falls back to the last folder itself, or nil (Fyne's default) if neither
+// exists any more.
+func (a *App) folderDialogStart() fyne.ListableURI {
+	last := a.fyneApp.Preferences().String(prefLastFolder)
+	if last == "" {
+		return nil
+	}
+	for _, p := range []string{filepath.Dir(last), last} {
+		if info, err := os.Stat(p); err != nil || !info.IsDir() {
+			continue
+		}
+		if l, err := storage.ListerForURI(storage.NewFileURI(p)); err == nil {
+			return l
+		}
+	}
+	return nil
 }
 
 func (a *App) onReload() {
