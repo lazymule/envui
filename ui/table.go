@@ -36,7 +36,7 @@ type row struct {
 	hint string // template value for missing rows
 }
 
-var columnTitles = []string{"VARIABLE", "VALUE", "SOURCE"}
+var columnKeys = []string{"col.key", "col.value", "col.source"}
 
 // rebuildRows recomputes the visible rows from the active file, the
 // template file, the shell and the search query.
@@ -110,7 +110,7 @@ func newCell() fyne.CanvasObject {
 
 func (a *App) buildTable() *widget.Table {
 	a.varTable = widget.NewTable(
-		func() (int, int) { return len(a.rows), len(columnTitles) },
+		func() (int, int) { return len(a.rows), len(columnKeys) },
 		newCell,
 		a.updateCell,
 	)
@@ -121,8 +121,8 @@ func (a *App) buildTable() *widget.Table {
 		return l
 	}
 	a.varTable.UpdateHeader = func(id widget.TableCellID, obj fyne.CanvasObject) {
-		if id.Col >= 0 && id.Col < len(columnTitles) {
-			obj.(*widget.Label).SetText(columnTitles[id.Col])
+		if id.Col >= 0 && id.Col < len(columnKeys) {
+			obj.(*widget.Label).SetText(T(columnKeys[id.Col]))
 		}
 	}
 	a.varTable.OnSelected = func(id widget.TableCellID) {
@@ -175,9 +175,9 @@ func (a *App) updateCell(id widget.TableCellID, obj fyne.CanvasObject) {
 			label.TextStyle = fyne.TextStyle{}
 			label.Importance = widget.LowImportance
 			if r.hint != "" && !r.v.IsSecret {
-				label.Text = "not set (example: " + displayValue(r.hint) + ")"
+				label.Text = T("cell.notSetExample", displayValue(r.hint))
 			} else {
-				label.Text = "not set - click to add"
+				label.Text = T("cell.notSet")
 			}
 		case r.v.IsSecret && !a.showSecrets:
 			label.TextStyle = fyne.TextStyle{}
@@ -186,7 +186,7 @@ func (a *App) updateCell(id widget.TableCellID, obj fyne.CanvasObject) {
 		case r.v.Value == "":
 			label.TextStyle = fyne.TextStyle{}
 			label.Importance = widget.LowImportance
-			label.Text = "empty"
+			label.Text = T("cell.empty")
 		default:
 			if r.kind == rowShell {
 				label.Importance = widget.LowImportance
@@ -197,13 +197,13 @@ func (a *App) updateCell(id widget.TableCellID, obj fyne.CanvasObject) {
 	case 2: // source
 		switch r.kind {
 		case rowFile:
-			label.Text = "file"
+			label.Text = T("source.file")
 			label.Importance = widget.SuccessImportance
 		case rowMissing:
-			label.Text = "missing"
+			label.Text = T("source.missing")
 			label.Importance = widget.WarningImportance
 		case rowShell:
-			label.Text = "shell"
+			label.Text = T("source.shell")
 			label.Importance = widget.LowImportance
 		}
 	}

@@ -1,7 +1,7 @@
 package ui
 
 import (
-	"fmt"
+	"errors"
 	"image/color"
 	"os"
 	"path/filepath"
@@ -20,7 +20,12 @@ import (
 	"github.com/mrf/envui/env"
 )
 
-const prefDarkMode = "darkMode"
+const (
+	prefDarkMode    = "darkMode"
+	prefLanguage    = "language"
+	prefShowShell   = "showShellOnStart"
+	prefShowSecrets = "showSecretsOnStart"
+)
 
 // themedRect is a background rectangle whose colour follows the theme.
 type themedRect struct {
@@ -67,11 +72,17 @@ func NewApp(fyneApp fyne.App, window fyne.Window) *App {
 	dark := fyneApp.Settings().ThemeVariant() == theme.VariantDark
 	dark = fyneApp.Preferences().BoolWithFallback(prefDarkMode, dark)
 
+	prefs := fyneApp.Preferences()
+	SetLanguage(Lang(prefs.StringWithFallback(prefLanguage, string(detectLanguage()))))
+
 	a := &App{
-		fyneApp: fyneApp,
-		window:  window,
-		dark:    dark,
+		fyneApp:     fyneApp,
+		window:      window,
+		dark:        dark,
+		showShell:   prefs.Bool(prefShowShell),
+		showSecrets: prefs.Bool(prefShowSecrets),
 	}
+	window.SetTitle(T("app.title"))
 	fyneApp.Settings().SetTheme(newEnvTheme(dark))
 	window.SetCloseIntercept(a.onClose)
 	return a
@@ -88,7 +99,7 @@ func (a *App) LoadProject(path string) error {
 		return err
 	}
 	if !info.IsDir() {
-		return fmt.Errorf("%s is not a folder", abs)
+		return errors.New(T("err.notFolder", abs))
 	}
 
 	project, err := env.LoadProject(abs)
@@ -107,6 +118,9 @@ func (a *App) LoadProject(path string) error {
 
 // BuildUI constructs the main UI
 func (a *App) BuildUI() fyne.CanvasObject {
+	a.themedRects = nil
+	a.onThemeChange = nil
+
 	header := a.buildHeader()
 	a.mainView = container.NewBorder(nil, a.buildStatusBar(), nil, nil, a.buildWorkspace())
 	a.body = container.NewStack()
@@ -131,7 +145,7 @@ func (a *App) buildHeader() fyne.CanvasObject {
 	logo.TextStyle = fyne.TextStyle{Bold: true}
 	logo.TextSize = 18
 
-	a.pathLabel = widget.NewLabel("No project open")
+	a.pathLabel = widget.NewLabel(T("header.noProject"))
 	a.pathLabel.Importance = widget.LowImportance
 
 	pathBox := container.NewBorder(nil, nil, widget.NewIcon(theme.FolderIcon()), nil, a.pathLabel)
@@ -142,9 +156,12 @@ func (a *App) buildHeader() fyne.CanvasObject {
 	reloadBtn := widget.NewButtonWithIcon("", theme.ViewRefreshIcon(), a.onReload)
 	reloadBtn.Importance = widget.LowImportance
 
-	openBtn := widget.NewButtonWithIcon("Open folder", theme.FolderOpenIcon(), a.onOpen)
+	openBtn := widget.NewButtonWithIcon(T("header.open"), theme.FolderOpenIcon(), a.onOpen)
 
-	right := container.NewHBox(reloadBtn, a.themeBtn, openBtn)
+	settingsBtn := widget.NewButtonWithIcon("", theme.SettingsIcon(), a.showSettings)
+	settingsBtn.Importance = widget.LowImportance
+
+	right := container.NewHBox(reloadBtn, a.themeBtn, settingsBtn, openBtn)
 	left := container.NewHBox(container.NewPadded(logo), widget.NewSeparator())
 	bar := container.NewBorder(nil, nil, left, right, pathBox)
 
@@ -208,10 +225,10 @@ func (a *App) buildSidebar() fyne.CanvasObject {
 		}
 	}
 
-	title := widget.NewLabelWithStyle("FILES", fyne.TextAlignLeading, fyne.TextStyle{Bold: true})
+	title := widget.NewLabelWithStyle(T("sidebar.files"), fyne.TextAlignLeading, fyne.TextStyle{Bold: true})
 	title.Importance = widget.LowImportance
 
-	newBtn := widget.NewButtonWithIcon("New .env file", theme.DocumentCreateIcon(), a.onNewFile)
+	newBtn := widget.NewButtonWithIcon(T("sidebar.newFile"), theme.DocumentCreateIcon(), a.onNewFile)
 	newBtn.Importance = widget.LowImportance
 
 	return container.NewStack(
@@ -226,27 +243,31 @@ func (a *App) buildWorkspace() fyne.CanvasObject {
 		Text:  "",
 	})
 
-	a.secretsBtn = widget.NewButtonWithIcon("Show secrets", theme.VisibilityIcon(), func() {
+	a.secretsBtn = widget.NewButtonWithIcon("", theme.VisibilityIcon(), func() {
 		a.showSecrets = !a.showSecrets
 		a.updateSecretsButton()
 		a.refresh()
 	})
 	a.secretsBtn.Importance = widget.LowImportance
+	a.updateSecretsButton()
 
-	shellCheck := widget.NewCheck("Shell variables", func(on bool) {
+	shellCheck := widget.NewCheck(T("toolbar.shell"), nil)
+	shellCheck.Checked = a.showShell
+	shellCheck.OnChanged = func(on bool) {
 		a.showShell = on
 		a.refresh()
-	})
+	}
 
-	addBtn := widget.NewButtonWithIcon("Add variable", theme.ContentAddIcon(), a.onAddVariable)
+	addBtn := widget.NewButtonWithIcon(T("toolbar.add"), theme.ContentAddIcon(), a.onAddVariable)
 	addBtn.Importance = widget.HighImportance
 
 	toolbar := container.NewBorder(nil, nil, a.fileTitle,
 		container.NewHBox(shellCheck, a.secretsBtn, addBtn))
 
 	a.searchEntry = widget.NewEntry()
-	a.searchEntry.SetPlaceHolder("Search variables…  (Ctrl+F)")
+	a.searchEntry.SetPlaceHolder(T("toolbar.search"))
 	a.searchEntry.ActionItem = widget.NewIcon(theme.SearchIcon())
+	a.searchEntry.Text = a.query
 	a.searchEntry.OnChanged = func(s string) {
 		a.query = s
 		a.refresh()
@@ -276,11 +297,11 @@ func (a *App) buildStatusBar() fyne.CanvasObject {
 	a.statusLabel = widget.NewLabel("")
 	a.statusLabel.Importance = widget.SuccessImportance
 
-	a.unsavedLbl = widget.NewLabel("Unsaved changes")
+	a.unsavedLbl = widget.NewLabel(T("status.unsaved"))
 	a.unsavedLbl.Importance = widget.WarningImportance
 	a.unsavedLbl.Hide()
 
-	a.saveBtn = widget.NewButtonWithIcon("Save  (Ctrl+S)", theme.DocumentSaveIcon(), a.onSave)
+	a.saveBtn = widget.NewButtonWithIcon(T("status.save"), theme.DocumentSaveIcon(), a.onSave)
 	a.saveBtn.Importance = widget.HighImportance
 	a.saveBtn.Disable()
 
@@ -328,13 +349,11 @@ func (a *App) showView() {
 	var view fyne.CanvasObject
 	switch {
 	case a.project == nil:
-		view = a.emptyView("Open a project",
-			"Choose a folder that contains .env files to view and edit its environment variables.",
-			"Open folder", theme.FolderOpenIcon(), a.onOpen)
+		view = a.emptyView(T("empty.open.title"), T("empty.open.message"),
+			T("header.open"), theme.FolderOpenIcon(), a.onOpen)
 	case len(a.project.Files) == 0:
-		view = a.emptyView("No .env files found",
-			fmt.Sprintf("%s does not contain any .env files yet.", a.project.Path),
-			"Create .env", theme.DocumentCreateIcon(), a.onNewFile)
+		view = a.emptyView(T("empty.none.title"), T("empty.none.message", a.project.Path),
+			T("empty.none.button"), theme.DocumentCreateIcon(), a.onNewFile)
 	default:
 		view = a.mainView
 	}
@@ -353,7 +372,7 @@ func (a *App) refresh() {
 	if a.project != nil {
 		a.pathLabel.SetText(fitText(a.project.Path, 560, fyne.TextStyle{}))
 	} else {
-		a.pathLabel.SetText("No project open")
+		a.pathLabel.SetText(T("header.noProject"))
 	}
 
 	title := ""
@@ -388,16 +407,16 @@ func (a *App) updateStats() {
 			secrets++
 		}
 	}
-	parts := []string{plural(len(f.Variables), "variable"), plural(secrets, "secret")}
+	parts := []string{Tn("stats.vars", len(f.Variables)), Tn("stats.secrets", secrets)}
 	if ex := a.exampleFile(); ex != nil && ex != f {
 		if a.missingCount > 0 {
-			parts = append(parts, fmt.Sprintf("%d missing from %s", a.missingCount, filepath.Base(ex.Path)))
+			parts = append(parts, T("status.missing", a.missingCount, filepath.Base(ex.Path)))
 		} else {
-			parts = append(parts, "in sync with "+filepath.Base(ex.Path))
+			parts = append(parts, T("status.inSync", filepath.Base(ex.Path)))
 		}
 	}
 	if strings.TrimSpace(a.query) != "" {
-		parts = append(parts, plural(len(a.rows), "match"))
+		parts = append(parts, Tn("stats.matches", len(a.rows)))
 	}
 	a.statsLabel.SetText(strings.Join(parts, "  ·  "))
 }
@@ -414,10 +433,10 @@ func (a *App) updateSaveState() {
 
 func (a *App) updateSecretsButton() {
 	if a.showSecrets {
-		a.secretsBtn.SetText("Hide secrets")
+		a.secretsBtn.SetText(T("toolbar.hide"))
 		a.secretsBtn.SetIcon(theme.VisibilityOffIcon())
 	} else {
-		a.secretsBtn.SetText("Show secrets")
+		a.secretsBtn.SetText(T("toolbar.show"))
 		a.secretsBtn.SetIcon(theme.VisibilityIcon())
 	}
 }
@@ -484,8 +503,13 @@ func (a *App) themeIcon() fyne.Resource {
 	return theme.ColorAchromaticIcon()
 }
 
-func (a *App) toggleTheme() {
-	a.dark = !a.dark
+func (a *App) toggleTheme() { a.setDark(!a.dark) }
+
+func (a *App) setDark(dark bool) {
+	if dark == a.dark {
+		return
+	}
+	a.dark = dark
 	a.fyneApp.Preferences().SetBool(prefDarkMode, a.dark)
 	a.fyneApp.Settings().SetTheme(newEnvTheme(a.dark))
 	for _, tr := range a.themedRects {
@@ -525,13 +549,7 @@ func (a *App) confirmDiscard(next func()) {
 		next()
 		return
 	}
-	dialog.ShowConfirm("Unsaved changes",
-		"You have unsaved changes. Discard them?",
-		func(ok bool) {
-			if ok {
-				next()
-			}
-		}, a.window)
+	a.showConfirm(T("unsaved.title"), T("unsaved.discardAsk"), T("unsaved.discard"), next)
 }
 
 // onOpen handles the open folder button
@@ -542,7 +560,7 @@ func (a *App) onOpen() {
 				return
 			}
 			if err := a.LoadProject(uri.Path()); err != nil {
-				dialog.ShowError(err, a.window)
+				a.showError(err)
 			}
 		}, a.window)
 		d.Resize(fyne.NewSize(760, 520))
@@ -560,11 +578,11 @@ func (a *App) onReload() {
 			active = f.Path
 		}
 		if err := a.LoadProject(a.project.Path); err != nil {
-			dialog.ShowError(err, a.window)
+			a.showError(err)
 			return
 		}
 		a.selectFile(active)
-		a.flashStatus("Reloaded from disk")
+		a.flashStatus(T("status.reloaded"))
 	})
 }
 
@@ -581,7 +599,7 @@ func (a *App) selectFile(path string) {
 // (.env.example etc.) exists, its contents are used as a starting point.
 func (a *App) onNewFile() {
 	if a.project == nil {
-		dialog.ShowInformation("No project", "Open a project folder first.", a.window)
+		a.showInfo(T("newFile.noProject"), T("newFile.noProjectText"))
 		return
 	}
 	nameEntry := widget.NewEntry()
@@ -594,56 +612,56 @@ func (a *App) onNewFile() {
 	}
 
 	ex := a.exampleFile()
-	fromExample := widget.NewCheck("Copy variables from template", nil)
+	fromExample := widget.NewCheck("", nil)
 	if ex != nil {
-		fromExample.SetText("Copy variables from " + filepath.Base(ex.Path))
+		fromExample.SetText(T("newFile.copy", filepath.Base(ex.Path)))
 		fromExample.SetChecked(true)
 	} else {
 		fromExample.Hide()
 	}
 
-	items := []*widget.FormItem{widget.NewFormItem("File name", nameEntry)}
+	items := []*widget.FormItem{widget.NewFormItem(T("newFile.name"), nameEntry)}
 	if ex != nil {
 		items = append(items, widget.NewFormItem("", fromExample))
 	}
 
-	d := dialog.NewForm("New env file", "Create", "Cancel", items, func(ok bool) {
+	d := dialog.NewForm(T("newFile.title"), T("common.create"), T("common.cancel"), items, func(ok bool) {
 		if !ok {
 			return
 		}
 		name := strings.TrimSpace(nameEntry.Text)
 		if name == "" || strings.ContainsAny(name, `/\`) {
-			dialog.ShowError(fmt.Errorf("invalid file name %q", name), a.window)
+			a.showError(errors.New(T("newFile.invalid", name)))
 			return
 		}
 		path := filepath.Join(a.project.Path, name)
 		if _, err := os.Stat(path); err == nil {
-			dialog.ShowError(fmt.Errorf("%s already exists", name), a.window)
+			a.showError(errors.New(T("newFile.exists", name)))
 			return
 		}
 		var content []byte
 		if ex != nil && fromExample.Checked {
 			data, err := os.ReadFile(ex.Path)
 			if err != nil {
-				dialog.ShowError(err, a.window)
+				a.showError(err)
 				return
 			}
 			content = data
 		}
 		if err := os.WriteFile(path, content, 0o644); err != nil {
-			dialog.ShowError(err, a.window)
+			a.showError(err)
 			return
 		}
 		f, err := env.ParseEnvFile(path)
 		if err != nil {
-			dialog.ShowError(err, a.window)
+			a.showError(err)
 			return
 		}
 		a.project.Files = append(a.project.Files, f)
 		a.showView()
 		a.refresh()
 		a.selectFile(path)
-		a.flashStatus("Created " + name)
+		a.flashStatus(T("status.created", name))
 	}, a.window)
 	nameEntry.OnSubmitted = func(string) { d.Submit() }
 	d.Resize(fyne.NewSize(420, d.MinSize().Height))
@@ -660,14 +678,14 @@ func (a *App) onSave() {
 	var saved []string
 	for _, f := range files {
 		if err := env.WriteEnvFile(f); err != nil {
-			dialog.ShowError(fmt.Errorf("saving %s: %w", filepath.Base(f.Path), err), a.window)
+			a.showError(errors.New(T("err.saving", filepath.Base(f.Path), err)))
 			a.refresh()
 			return
 		}
 		f.Modified = false
 		saved = append(saved, filepath.Base(f.Path))
 	}
-	a.flashStatus("Saved " + strings.Join(saved, ", "))
+	a.flashStatus(T("status.saved", strings.Join(saved, ", ")))
 	a.refresh()
 }
 
@@ -677,7 +695,7 @@ func (a *App) onClose() {
 		return
 	}
 	var d *dialog.CustomDialog
-	saveBtn := widget.NewButtonWithIcon("Save and quit", theme.DocumentSaveIcon(), func() {
+	saveBtn := widget.NewButtonWithIcon(T("unsaved.saveAndQuit"), theme.DocumentSaveIcon(), func() {
 		d.Hide()
 		a.onSave()
 		if len(a.modifiedFiles()) == 0 {
@@ -685,15 +703,15 @@ func (a *App) onClose() {
 		}
 	})
 	saveBtn.Importance = widget.HighImportance
-	discardBtn := widget.NewButton("Discard", func() {
+	discardBtn := widget.NewButton(T("unsaved.discard"), func() {
 		d.Hide()
 		a.window.Close()
 	})
 	discardBtn.Importance = widget.DangerImportance
-	cancelBtn := widget.NewButton("Cancel", func() { d.Hide() })
+	cancelBtn := widget.NewButton(T("common.cancel"), func() { d.Hide() })
 
-	d = dialog.NewCustomWithoutButtons("Unsaved changes",
-		widget.NewLabel("You have unsaved changes. Save them before quitting?"), a.window)
+	d = dialog.NewCustomWithoutButtons(T("unsaved.title"),
+		widget.NewLabel(T("unsaved.quitAsk")), a.window)
 	d.SetButtons([]fyne.CanvasObject{cancelBtn, discardBtn, saveBtn})
 	d.Show()
 }
@@ -708,16 +726,6 @@ func isExampleFile(f *env.EnvFile) bool {
 		return true
 	}
 	return false
-}
-
-func plural(n int, word string) string {
-	if n == 1 {
-		return fmt.Sprintf("1 %s", word)
-	}
-	if strings.HasSuffix(word, "ch") {
-		return fmt.Sprintf("%d %ses", n, word)
-	}
-	return fmt.Sprintf("%d %ss", n, word)
 }
 
 // truncate shortens a string to the given number of characters (runes).

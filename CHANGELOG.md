@@ -16,6 +16,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - "New .env file" action (optionally copying a template) and an empty state when a folder has no env files
 - Reload from disk, copy value to clipboard, keyboard shortcuts (Ctrl+S / N / F / O)
 - Unsaved-changes prompt when quitting, reloading or opening another folder
+- Turkish translation and language support; language follows the system locale by default
+- Settings dialog: language, theme and startup options (show shell variables / secrets)
 
 ### Fixed
 

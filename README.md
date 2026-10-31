@@ -27,6 +27,7 @@ envui gives you a visual editor to manage environment variables across multiple 
 - **Source Tracking** - See which variables come from file vs shell environment
 - **Search** - Filter variables by name or value
 - **Light & Dark Themes** - Toggle from the header; your choice is remembered
+- **Languages** - English and Turkish (Türkçe); picked from your system language and changeable in Settings
 - **Comment Preservation** - Your comments stay intact when saving
 
 ### Keyboard shortcuts

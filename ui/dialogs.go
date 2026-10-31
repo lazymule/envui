@@ -2,7 +2,6 @@ package ui
 
 import (
 	"errors"
-	"fmt"
 	"image/color"
 	"path/filepath"
 	"regexp"
@@ -23,10 +22,10 @@ var validKey = regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_.\-]*$`)
 
 func validateKey(key string) error {
 	if key == "" {
-		return errors.New("name is required")
+		return errors.New(T("key.required"))
 	}
 	if !validKey.MatchString(key) {
-		return errors.New("use letters, digits and _ (must not start with a digit)")
+		return errors.New(T("key.invalid"))
 	}
 	return nil
 }
@@ -35,7 +34,7 @@ func validateKey(key string) error {
 func (a *App) onAddVariable() {
 	f := a.activeFile()
 	if f == nil {
-		dialog.ShowInformation("No file selected", "Open a project and select a file first.", a.window)
+		a.showInfo(T("var.noFileTitle"), T("var.noFileText"))
 		return
 	}
 	a.showVariableDialog(f, -1, "", "")
@@ -58,11 +57,11 @@ func (a *App) showVariableDialog(f *env.EnvFile, idx int, key, value string) {
 	} else {
 		valueEntry = widget.NewEntry()
 	}
-	valueEntry.SetPlaceHolder("value")
+	valueEntry.SetPlaceHolder(T("var.valueHint"))
 	valueEntry.TextStyle = fyne.TextStyle{Monospace: true}
 	valueEntry.SetText(value)
 
-	secretHint := widget.NewLabel("Looks like a secret — the value will be masked in the table.")
+	secretHint := widget.NewLabel(T("var.secretHint"))
 	secretHint.Importance = widget.LowImportance
 	secretHint.Wrapping = fyne.TextWrapWord
 	secretHint.Hidden = !env.IsSecret(key)
@@ -87,15 +86,15 @@ func (a *App) showVariableDialog(f *env.EnvFile, idx int, key, value string) {
 
 	copyBtn := widget.NewButtonWithIcon("", theme.ContentCopyIcon(), func() {
 		a.window.Clipboard().SetContent(valueEntry.Text)
-		a.flashStatus("Copied " + strings.TrimSpace(keyEntry.Text) + " to clipboard")
+		a.flashStatus(T("status.copied", strings.TrimSpace(keyEntry.Text)))
 	})
 	copyBtn.Importance = widget.LowImportance
 
 	form := container.NewVBox(
 		width,
-		caption("Name"),
+		caption(T("var.name")),
 		keyEntry,
-		caption("Value"),
+		caption(T("var.value")),
 		container.NewBorder(nil, nil, nil, copyBtn, valueEntry),
 		secretHint,
 		errLabel,
@@ -113,7 +112,7 @@ func (a *App) showVariableDialog(f *env.EnvFile, idx int, key, value string) {
 		}
 		for i, v := range f.Variables {
 			if v.Key == k && i != idx {
-				errLabel.SetText(fmt.Sprintf("%s already exists in this file.", k))
+				errLabel.SetText(T("var.exists", k))
 				errLabel.Show()
 				return
 			}
@@ -143,35 +142,33 @@ func (a *App) showVariableDialog(f *env.EnvFile, idx int, key, value string) {
 	keyEntry.OnSubmitted = func(string) { a.window.Canvas().Focus(valueEntry) }
 	valueEntry.OnSubmitted = func(string) { save() }
 
-	saveBtn := widget.NewButtonWithIcon("Save", theme.ConfirmIcon(), save)
+	saveBtn := widget.NewButtonWithIcon(T("common.save"), theme.ConfirmIcon(), save)
 	if !editing {
-		saveBtn.SetText("Add")
+		saveBtn.SetText(T("common.add"))
 		saveBtn.SetIcon(theme.ContentAddIcon())
 	}
 	saveBtn.Importance = widget.HighImportance
-	cancelBtn := widget.NewButton("Cancel", func() { d.Hide() })
+	cancelBtn := widget.NewButton(T("common.cancel"), func() { d.Hide() })
 
 	buttons := []fyne.CanvasObject{cancelBtn, saveBtn}
 	if editing {
-		deleteBtn := widget.NewButtonWithIcon("Delete", theme.DeleteIcon(), func() {
-			dialog.ShowConfirm("Delete variable",
-				fmt.Sprintf("Delete %s from %s?", f.Variables[idx].Key, filepath.Base(f.Path)),
-				func(ok bool) {
-					if !ok {
-						return
-					}
+		deleteBtn := widget.NewButtonWithIcon(T("common.delete"), theme.DeleteIcon(), func() {
+			a.showConfirm(T("var.deleteTitle"),
+				T("var.deleteAsk", f.Variables[idx].Key, filepath.Base(f.Path)),
+				T("common.delete"),
+				func() {
 					f.Variables = append(f.Variables[:idx], f.Variables[idx+1:]...)
 					d.Hide()
 					a.markModified(f)
-				}, a.window)
+				})
 		})
 		deleteBtn.Importance = widget.DangerImportance
 		buttons = []fyne.CanvasObject{deleteBtn, layout.NewSpacer(), cancelBtn, saveBtn}
 	}
 
-	title := "Add variable"
+	title := T("var.addTitle")
 	if editing {
-		title = "Edit variable"
+		title = T("var.editTitle")
 	}
 	d = dialog.NewCustomWithoutButtons(title, form, a.window)
 	d.SetButtons(buttons)
@@ -182,4 +179,33 @@ func (a *App) showVariableDialog(f *env.EnvFile, idx int, key, value string) {
 	} else {
 		a.window.Canvas().Focus(keyEntry)
 	}
+}
+
+// showError shows an error dialog with translated title and button.
+func (a *App) showError(err error) {
+	msg := widget.NewLabel(err.Error())
+	msg.Wrapping = fyne.TextWrapWord
+	width := canvas.NewRectangle(color.Transparent)
+	width.SetMinSize(fyne.NewSize(380, 0))
+	d := dialog.NewCustom(T("common.error"), T("common.ok"),
+		container.NewBorder(nil, nil, widget.NewIcon(theme.ErrorIcon()), nil,
+			container.NewVBox(width, msg)), a.window)
+	d.Show()
+}
+
+// showInfo shows an information dialog with a translated button.
+func (a *App) showInfo(title, message string) {
+	dialog.NewCustom(title, T("common.ok"), widget.NewLabel(message), a.window).Show()
+}
+
+// showConfirm asks for confirmation; onConfirm runs only if the user agrees.
+func (a *App) showConfirm(title, message, confirmText string, onConfirm func()) {
+	d := dialog.NewConfirm(title, message, func(ok bool) {
+		if ok {
+			onConfirm()
+		}
+	}, a.window)
+	d.SetConfirmText(confirmText)
+	d.SetDismissText(T("common.cancel"))
+	d.Show()
 }

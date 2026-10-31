@@ -51,15 +51,34 @@ func TestFitText(t *testing.T) {
 	}
 }
 
-func TestPlural(t *testing.T) {
-	cases := map[string]string{
-		plural(1, "variable"): "1 variable",
-		plural(2, "variable"): "2 variables",
-		plural(3, "match"):    "3 matches",
+func TestTranslations(t *testing.T) {
+	defer SetLanguage(LangEnglish)
+
+	SetLanguage(LangEnglish)
+	if got := Tn("stats.vars", 1); got != "1 variable" {
+		t.Errorf("en one: %q", got)
 	}
-	for got, want := range cases {
-		if got != want {
-			t.Errorf("got %q want %q", got, want)
+	if got := Tn("stats.vars", 3); got != "3 variables" {
+		t.Errorf("en other: %q", got)
+	}
+
+	SetLanguage(LangTurkish)
+	if got := Tn("stats.vars", 1); got != "1 değişken" {
+		t.Errorf("tr one: %q", got)
+	}
+	if got := T("status.missing", 2, ".env.example"); got != ".env.example dosyasına göre 2 eksik" {
+		t.Errorf("tr missing: %q", got)
+	}
+
+	// every English key must exist in every other language
+	for lang, m := range messages {
+		for key := range messages[LangEnglish] {
+			if strings.HasSuffix(key, ".one") {
+				continue // languages without singular forms may omit these
+			}
+			if _, ok := m[key]; !ok {
+				t.Errorf("%s: missing translation for %q", lang, key)
+			}
 		}
 	}
 }
