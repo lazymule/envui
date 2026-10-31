@@ -45,6 +45,7 @@ envui, birden fazla `.env` dosyasındaki ortam değişkenlerini tek bir pencered
 | `Ctrl+N` | Değişken ekle |
 | `Ctrl+F` | Ara |
 | `Ctrl+O` | Klasör aç |
+| `F1` | Hakkında penceresi |
 
 macOS'ta `Ctrl` yerine `Cmd` kullanılır.
 

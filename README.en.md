@@ -45,6 +45,7 @@ envui lets you view and edit environment variables across multiple .env files fr
 | `Ctrl+N` | Add a variable |
 | `Ctrl+F` | Search |
 | `Ctrl+O` | Open a folder |
+| `F1` | About dialog |
 
 Use `Cmd` instead of `Ctrl` on macOS.
 

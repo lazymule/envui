@@ -165,7 +165,10 @@ func (a *App) buildHeader() fyne.CanvasObject {
 	settingsBtn := widget.NewButtonWithIcon("", theme.SettingsIcon(), a.showSettings)
 	settingsBtn.Importance = widget.LowImportance
 
-	right := container.NewHBox(reloadBtn, a.themeBtn, settingsBtn, openBtn)
+	aboutBtn := widget.NewButtonWithIcon("", theme.InfoIcon(), a.showAbout)
+	aboutBtn.Importance = widget.LowImportance
+
+	right := container.NewHBox(reloadBtn, a.themeBtn, settingsBtn, aboutBtn, openBtn)
 	left := container.NewHBox(container.NewPadded(logo), widget.NewSeparator())
 	bar := container.NewBorder(nil, nil, left, right, pathBox)
 
@@ -539,6 +542,11 @@ func (a *App) registerShortcuts() {
 	c.AddShortcut(&desktop.CustomShortcut{KeyName: fyne.KeyS, Modifier: mod}, func(fyne.Shortcut) { a.onSave() })
 	c.AddShortcut(&desktop.CustomShortcut{KeyName: fyne.KeyN, Modifier: mod}, func(fyne.Shortcut) { a.onAddVariable() })
 	c.AddShortcut(&desktop.CustomShortcut{KeyName: fyne.KeyO, Modifier: mod}, func(fyne.Shortcut) { a.onOpen() })
+	c.SetOnTypedKey(func(ev *fyne.KeyEvent) {
+		if ev.Name == fyne.KeyF1 {
+			a.showAbout()
+		}
+	})
 	c.AddShortcut(&desktop.CustomShortcut{KeyName: fyne.KeyF, Modifier: mod}, func(fyne.Shortcut) {
 		if a.searchEntry != nil && a.activeFile() != nil {
 			c.Focus(a.searchEntry)

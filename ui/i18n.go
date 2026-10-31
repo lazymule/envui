@@ -178,6 +178,24 @@ var messages = map[Lang]map[string]string{
 		"settings.secrets":  "Show secrets",
 		"settings.startup":  "On start",
 		"settings.note":     "Some system dialogs (such as the folder picker) are always shown in English.",
+
+		"common.close": "Close",
+
+		"about.title":            "About envui",
+		"about.version":          "Version %s",
+		"about.description":      "A visual editor for .env files: see, compare and edit environment variables across multiple files.",
+		"about.developer":        "Developer",
+		"about.developerName":    "GLARK Software and IT Services",
+		"about.original":         "Original project",
+		"about.source":           "Source code",
+		"about.license":          "License",
+		"about.licenseText":      "MIT License",
+		"about.builtWith":        "Built with",
+		"about.renderer":         "Graphics",
+		"about.rendererHardware": "OpenGL (graphics card)",
+		"about.rendererSoftware": "Mesa software rendering (%s)",
+		"about.system":           "System",
+		"about.thanks":           "Thanks to Mark Ferree for creating envui and sharing it as open source.",
 	},
 
 	LangTurkish: {
@@ -273,5 +291,23 @@ var messages = map[Lang]map[string]string{
 		"settings.secrets":  "Gizli değerleri göster",
 		"settings.startup":  "Açılışta",
 		"settings.note":     "Bazı sistem pencereleri (ör. klasör seçici) her zaman İngilizce görünür.",
+
+		"common.close": "Kapat",
+
+		"about.title":            "envui Hakkında",
+		"about.version":          "Sürüm %s",
+		"about.description":      ".env dosyaları için görsel düzenleyici: birden fazla dosyadaki ortam değişkenlerini görün, karşılaştırın ve düzenleyin.",
+		"about.developer":        "Geliştiren",
+		"about.developerName":    "GLARK Yazılım ve Bilişim Hizmetleri",
+		"about.original":         "Orijinal proje",
+		"about.source":           "Kaynak kod",
+		"about.license":          "Lisans",
+		"about.licenseText":      "MIT Lisansı",
+		"about.builtWith":        "Kullanılan teknoloji",
+		"about.renderer":         "Grafik",
+		"about.rendererHardware": "OpenGL (ekran kartı)",
+		"about.rendererSoftware": "Mesa yazılımsal çizim (%s)",
+		"about.system":           "Sistem",
+		"about.thanks":           "envui'yi geliştirip açık kaynak olarak paylaştığı için Mark Ferree'ye teşekkürler.",
 	},
 }

@@ -19,6 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Turkish translation and language support; language follows the system locale by default
 - Settings dialog: language, theme and startup options (show shell variables / secrets)
 - Virtual machine / Remote Desktop support: when Mesa's software OpenGL (opengl32.dll + libgallium_wgl.dll) is next to envui.exe, envui uses the llvmpipe CPU renderer; `tools/package_vm.sh` builds a ready-to-use zip
+- About dialog (header ⓘ button or F1): version, developer, original author, links, license and the graphics renderer in use
 - Application icon (window, taskbar and embedded in envui.exe with version info)
 - Colour palette based on the GLARK brand blues (light and dark themes)
 - Folder picker remembers the last opened project and starts next to it
