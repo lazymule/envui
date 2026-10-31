@@ -1,13 +1,16 @@
 name: Release
 
 # Pushing a tag such as v0.2.0 builds envui and publishes a GitHub release.
+# It can also be started by hand (Actions > Release > Run workflow): the
+# release, and its tag if it doesn't exist yet, is created from the
+# selected branch.
 on:
   push:
     tags: ["v*"]
   workflow_dispatch:
     inputs:
       tag:
-        description: "Existing tag to (re)build the release for, e.g. v0.2.0"
+        description: "Version tag to release, e.g. v0.2.0 (created if missing)"
         required: true
 
 permissions:
@@ -19,9 +22,8 @@ jobs:
     env:
       TAG: ${{ github.event.inputs.tag || github.ref_name }}
     steps:
+      # tag push: the tag itself; manual run: the branch it was started from
       - uses: actions/checkout@v4
-        with:
-          ref: ${{ env.TAG }}
 
       - uses: actions/setup-go@v5
         with:
@@ -88,6 +90,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ env.TAG }}
+          target_commitish: ${{ github.sha }}
           name: envui ${{ env.TAG }}
           body_path: release-notes.md
           files: |
