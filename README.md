@@ -1,3 +1,5 @@
+<p align="center"><img src="docs/icon-1024.png" width="128" alt="envui simgesi"></p>
+
 # envui
 
 **Türkçe** | [English](README.en.md)
@@ -140,6 +142,12 @@ go build -o envui .
 
 # Testleri çalıştır
 go test ./...
+```
+
+Simgeyi yeniden üretmek için `python3 tools/make_icon.py` komutunu çalıştırın. Ardından Windows kaynağını güncelleyin:
+
+```bash
+x86_64-w64-mingw32-windres -O coff -i winres/envui.rc -o rsrc_windows_amd64.syso
 ```
 
 Yeni bir dil eklemek için `ui/i18n.go` dosyasındaki `messages` tablosuna bir bölüm ve `languages` listesine bir satır eklemeniz yeterli. Testler, eksik çeviri kaldıysa uyarır.

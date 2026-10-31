@@ -18,6 +18,7 @@ import (
 	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 
+	"github.com/mrf/envui/assets"
 	"github.com/mrf/envui/env"
 )
 
@@ -315,8 +316,8 @@ func (a *App) buildStatusBar() fyne.CanvasObject {
 	)
 }
 
-func (a *App) emptyView(title, message, buttonText string, icon fyne.Resource, action func()) fyne.CanvasObject {
-	img := widget.NewIcon(icon)
+func (a *App) emptyView(title, message, buttonText string, image, buttonIcon fyne.Resource, imageSize float32, action func()) fyne.CanvasObject {
+	img := widget.NewIcon(image)
 	heading := widget.NewRichText(&widget.TextSegment{
 		Style: widget.RichTextStyle{
 			Alignment: fyne.TextAlignCenter,
@@ -329,14 +330,14 @@ func (a *App) emptyView(title, message, buttonText string, icon fyne.Resource, a
 	msg.Importance = widget.LowImportance
 	msg.Wrapping = fyne.TextWrapWord
 
-	btn := widget.NewButtonWithIcon(buttonText, icon, action)
+	btn := widget.NewButtonWithIcon(buttonText, buttonIcon, action)
 	btn.Importance = widget.HighImportance
 	if action == nil {
 		btn.Hide()
 	}
 
 	box := container.NewVBox(
-		container.NewCenter(container.NewGridWrap(fyne.NewSize(72, 72), img)),
+		container.NewCenter(container.NewGridWrap(fyne.NewSize(imageSize, imageSize), img)),
 		heading,
 		container.NewGridWrap(fyne.NewSize(420, msg.MinSize().Height*2), msg),
 		container.NewCenter(btn),
@@ -353,10 +354,10 @@ func (a *App) showView() {
 	switch {
 	case a.project == nil:
 		view = a.emptyView(T("empty.open.title"), T("empty.open.message"),
-			T("header.open"), theme.FolderOpenIcon(), a.onOpen)
+			T("header.open"), assets.Icon, theme.FolderOpenIcon(), 128, a.onOpen)
 	case len(a.project.Files) == 0:
 		view = a.emptyView(T("empty.none.title"), T("empty.none.message", a.project.Path),
-			T("empty.none.button"), theme.DocumentCreateIcon(), a.onNewFile)
+			T("empty.none.button"), theme.DocumentCreateIcon(), theme.DocumentCreateIcon(), 72, a.onNewFile)
 	default:
 		view = a.mainView
 	}

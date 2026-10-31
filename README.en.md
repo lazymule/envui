@@ -1,3 +1,5 @@
+<p align="center"><img src="docs/icon-1024.png" width="128" alt="envui icon"></p>
+
 # envui
 
 [Türkçe](README.md) | **English**
@@ -140,6 +142,12 @@ go build -o envui .
 
 # Run tests
 go test ./...
+```
+
+To regenerate the icon, run `python3 tools/make_icon.py`, then refresh the Windows resource:
+
+```bash
+x86_64-w64-mingw32-windres -O coff -i winres/envui.rc -o rsrc_windows_amd64.syso
 ```
 
 To add a language, add a section to the `messages` table in `ui/i18n.go` and an entry to the `languages` list. The tests flag any missing translations.
