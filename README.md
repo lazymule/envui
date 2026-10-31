@@ -18,7 +18,9 @@ Go ve Fyne ile yazılmış, `.env` dosyaları için görsel bir düzenleyici.
 
 envui, birden fazla `.env` dosyasındaki ortam değişkenlerini tek bir pencereden görüp düzenlemenizi sağlar.
 
-![envui Türkçe arayüz](docs/screenshot-tr.png)
+| Koyu tema | Açık tema |
+| --- | --- |
+| ![envui koyu tema](docs/screenshot-tr.png) | ![envui açık tema](docs/screenshot-tr-light.png) |
 
 ## Özellikler
 
@@ -28,7 +30,7 @@ envui, birden fazla `.env` dosyasındaki ortam değişkenlerini tek bir pencered
 - **Eksik değişkenler**: `.env.example` dosyasında olup sizin dosyanızda olmayan değişkenler işaretlenir. Tıklayarak örnek değerle ekleyebilirsiniz.
 - **Kaynak takibi**: Değişkenin dosyadan mı yoksa sistemden mi geldiği görünür.
 - **Arama**: Değişkenleri ada veya değere göre filtreleyebilirsiniz.
-- **Açık ve koyu tema**: Seçiminiz bir sonraki açılışta da geçerli olur.
+- **Açık ve koyu tema**: GLARK kurumsal renkleriyle uyumludur. Seçiminiz bir sonraki açılışta da geçerli olur.
 - **Dil desteği**: Türkçe ve İngilizce. Sistem diline göre otomatik seçilir, Ayarlar'dan değiştirilebilir.
 - **Klasör hatırlama**: Klasör seçme penceresi en son açtığınız projenin yanından başlar.
 - **Yorumlar korunur**: Kaydederken dosyadaki yorum satırlarınız silinmez.

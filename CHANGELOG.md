@@ -18,6 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Unsaved-changes prompt when quitting, reloading or opening another folder
 - Turkish translation and language support; language follows the system locale by default
 - Settings dialog: language, theme and startup options (show shell variables / secrets)
+- Colour palette based on the GLARK brand blues (light and dark themes)
 - Folder picker remembers the last opened project and starts next to it
 - Turkish README (default) with an English version in README.en.md; credits to the original author
 

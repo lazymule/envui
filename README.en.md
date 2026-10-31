@@ -18,7 +18,9 @@ Managing .env files is a pain:
 
 envui lets you view and edit environment variables across multiple .env files from a single window.
 
-![envui dark theme](docs/screenshot-dark.png)
+| Dark theme | Light theme |
+| --- | --- |
+| ![envui dark theme](docs/screenshot-dark.png) | ![envui light theme](docs/screenshot-light.png) |
 
 ## Features
 
@@ -28,7 +30,7 @@ envui lets you view and edit environment variables across multiple .env files fr
 - **Missing variables**: Keys in `.env.example` that aren't set in your file are highlighted. Click one to add it with the example value.
 - **Source tracking**: See whether a variable comes from the file or the shell environment.
 - **Search**: Filter variables by name or value.
-- **Light and dark themes**: Your choice is remembered between runs.
+- **Light and dark themes**: Matching the GLARK brand colours. Your choice is remembered between runs.
 - **Languages**: Turkish and English. Picked from your system language and changeable in Settings.
 - **Remembers folders**: The folder picker opens next to the project you opened last.
 - **Comment preservation**: Comments in your files stay intact when saving.
