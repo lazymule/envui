@@ -95,6 +95,22 @@ Ya da bir proje klasörünü doğrudan açın:
 
 Windows'ta `envui.exe` dosyasına çift tıklamanız yeterli.
 
+## Sorun giderme
+
+### "WGL: The driver does not appear to support OpenGL" hatası
+
+envui pencereyi çizmek için OpenGL 2.1 kullanır. Sanal makinelerde (VirtualBox, Hyper-V, VMware), Uzak Masaüstü (RDP) oturumlarında ve ekran kartı sürücüsü olmayan bilgisayarlarda OpenGL bulunmayabilir.
+
+**Çözüm:** Sanal makine paketini kullanın. Bu paket, envui.exe'nin yanına Mesa'nın yazılımsal OpenGL sürücüsünü (`opengl32.dll`, `libgallium_wgl.dll`) ekler. envui bu dosyaları kendi klasöründe görünce çizimi ekran kartı yerine işlemciyle yapar. Sistemdeki diğer programlar etkilenmez. Paketi oluşturmak için:
+
+```bash
+tools/package_vm.sh
+```
+
+Komut `dist/envui-windows-vm.zip` dosyasını üretir. Zip'teki üç dosyayı aynı klasöre çıkarıp `envui.exe`'yi çalıştırın.
+
+Ekran kartı olan bir bilgisayara RDP ile bağlanıyorsanız, uzak bilgisayarda şu Grup İlkesi ayarını etkinleştirmek de işe yarar: *Uzak Masaüstü Oturumu Ana Bilgisayarı → Uzak Oturum Ortamı → "Tüm Uzak Masaüstü Hizmetleri oturumları için donanım grafik bağdaştırıcılarını kullan"*.
+
 ## Ayarlar
 
 Başlıktaki ⚙ simgesiyle açılır:

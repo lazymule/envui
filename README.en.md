@@ -95,6 +95,22 @@ Or open a project folder directly:
 
 On Windows, just double-click `envui.exe`.
 
+## Troubleshooting
+
+### "WGL: The driver does not appear to support OpenGL"
+
+envui draws its window with OpenGL 2.1. Virtual machines (VirtualBox, Hyper-V, VMware), Remote Desktop (RDP) sessions and computers without a graphics driver may not provide it.
+
+**Fix:** use the virtual machine package. It bundles Mesa's software OpenGL renderer (`opengl32.dll`, `libgallium_wgl.dll`) next to envui.exe. When envui finds these files in its own folder, it renders with the CPU instead of the graphics card. Other programs are not affected. To build the package:
+
+```bash
+tools/package_vm.sh
+```
+
+The command produces `dist/envui-windows-vm.zip`. Extract all three files into one folder and run `envui.exe`.
+
+If you connect over RDP to a computer that has a graphics card, enabling this Group Policy on the remote computer also helps: *Remote Desktop Session Host → Remote Session Environment → "Use hardware graphics adapters for all Remote Desktop Services sessions"*.
+
 ## Settings
 
 Open Settings with the ⚙ icon in the header:
