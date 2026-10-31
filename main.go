@@ -12,6 +12,10 @@ import (
 )
 
 func main() {
+	if relaunchWithSoftwareGL() {
+		return
+	}
+
 	a := app.NewWithID("io.github.mrf.envui")
 	a.SetIcon(assets.Icon)
 	w := a.NewWindow("envui")
