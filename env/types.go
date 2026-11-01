@@ -35,6 +35,10 @@ type Variable struct {
 	InlineComment string // trailing "# ..." comment on the same line
 	TrailingSpace bool   // unquoted value had trailing whitespace in the file
 
+	// Disabled marks a commented-out variable ("# KEY=value"). It is kept
+	// in the file as a comment and ignored by loaders until enabled.
+	Disabled bool
+
 	// Doc is the description written in "#" comment lines directly above
 	// the variable (without the "#"), one line per comment line.
 	Doc string
@@ -53,6 +57,7 @@ type Variable struct {
 	parsedKey    string
 	parsedValue  string
 	parsedExport bool
+	parsedOff    bool
 	parsedDoc    string
 	docLines     []int // line numbers of the Doc comment lines
 }
@@ -70,7 +75,19 @@ func (v *Variable) MarkEdited() {
 // Unchanged reports whether the variable still has the key, value and
 // export flag it was read with.
 func (v *Variable) Unchanged() bool {
-	return v.raw != "" && v.Key == v.parsedKey && v.Value == v.parsedValue && v.Export == v.parsedExport
+	return v.raw != "" && v.Key == v.parsedKey && v.Value == v.parsedValue && v.Export == v.parsedExport &&
+		v.Disabled == v.parsedOff
+}
+
+// Active returns the variables that are not commented out.
+func (f *EnvFile) Active() []Variable {
+	out := make([]Variable, 0, len(f.Variables))
+	for _, v := range f.Variables {
+		if !v.Disabled {
+			out = append(out, v)
+		}
+	}
+	return out
 }
 
 // EnvFile represents a parsed .env file

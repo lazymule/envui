@@ -256,15 +256,19 @@ func (a *App) setValue(f, from *env.EnvFile, key, value string) {
 func (a *App) setValues(targets []*env.EnvFile, key, value, doc string, overwrite bool) {
 	a.mutate(targets, func() {
 		for _, f := range targets {
-			found := false
 			vars := copyVars(f.Variables)
+			// update the active definition; if the key is only there
+			// commented out, set it and switch it on
+			target := -1
 			for i := range vars {
-				if vars[i].Key == key {
-					found = true
-					if overwrite {
-						vars[i].Value = value
-					}
+				if vars[i].Key == key && (target < 0 || vars[target].Disabled) {
+					target = i
 				}
+			}
+			found := target >= 0
+			if found && (overwrite || vars[target].Disabled) {
+				vars[target].Value = value
+				vars[target].Disabled = false
 			}
 			if !found {
 				vars = append(vars, env.Variable{

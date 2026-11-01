@@ -56,6 +56,9 @@ func lastValues(f *EnvFile) (map[string]string, []string) {
 		return values, order
 	}
 	for _, v := range f.Variables {
+		if v.Disabled {
+			continue // commented out: treated as not set
+		}
 		if _, ok := values[v.Key]; !ok {
 			order = append(order, v.Key)
 		}

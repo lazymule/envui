@@ -46,9 +46,12 @@ func (a *App) onAddVariable() {
 func (a *App) showVariableDialog(f *env.EnvFile, idx int, key, value, doc string) {
 	editing := idx >= 0
 	groupDoc := ""
+	enabled := widget.NewCheck(T("var.enabled"), nil)
+	enabled.SetChecked(true)
 	if editing {
 		doc = f.Variables[idx].Doc
 		groupDoc = f.Variables[idx].GroupDoc
+		enabled.SetChecked(!f.Variables[idx].Disabled)
 	}
 
 	keyEntry := widget.NewEntry()
@@ -109,6 +112,7 @@ func (a *App) showVariableDialog(f *env.EnvFile, idx int, key, value, doc string
 		caption(T("var.value")),
 		container.NewBorder(nil, nil, nil, copyBtn, valueEntry),
 		secretHint,
+		enabled,
 		caption(T("var.doc")),
 	)
 	if groupDoc != "" && doc == "" {
@@ -142,7 +146,7 @@ func (a *App) showVariableDialog(f *env.EnvFile, idx int, key, value, doc string
 		// the name must be unique, unless it is unchanged (so existing
 		// duplicates can still be edited)
 		for i, v := range f.Variables {
-			if v.Key == k && i != idx && k != key {
+			if v.Key == k && i != idx && k != key && !v.Disabled {
 				errLabel.SetText(T("var.exists", k))
 				errLabel.Show()
 				return
@@ -160,6 +164,7 @@ func (a *App) showVariableDialog(f *env.EnvFile, idx int, key, value, doc string
 				v.Value = valueEntry.Text
 				v.IsSecret = env.IsSecret(k)
 				v.Doc = cleanDoc(docEntry.Text)
+				v.Disabled = !enabled.Checked
 			} else {
 				f.Variables = append(f.Variables, env.Variable{
 					Key:      k,
@@ -168,6 +173,7 @@ func (a *App) showVariableDialog(f *env.EnvFile, idx int, key, value, doc string
 					IsSecret: env.IsSecret(k),
 					Line:     -1, // new variable, appended on save
 					Doc:      cleanDoc(docEntry.Text),
+					Disabled: !enabled.Checked,
 				})
 			}
 		})

@@ -116,6 +116,9 @@ func formatVariable(v *Variable) string {
 		return v.raw
 	}
 	var b strings.Builder
+	if v.Disabled {
+		b.WriteString("# ")
+	}
 	if v.Export {
 		b.WriteString("export ")
 	}

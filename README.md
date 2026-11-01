@@ -175,6 +175,12 @@ db.password=                                  (soluk olarak) gösterilir
 logger.level=debug # debug, info, warning   ← satır sonu açıklaması
 ```
 
+### Kapalı (yoruma alınmış) değişkenler
+
+`# dev.lisans.web=5` gibi yoruma alınmış satırlar tabloda **kapalı** olarak, soluk renkte görünür. Düzenleme penceresindeki **Etkin** kutusuyla tek tıkla açıp kapatabilirsiniz; envui yalnızca satırın başındaki `# `'i ekler ya da kaldırır. Kapalı değişkenler sorun denetiminde ve karşılaştırmada "tanımlı değil" sayılır.
+
+Açıklama cümleleri yanlışlıkla değişken sanılmaz: satır yalnızca `# ANAHTAR=değer` biçimindeyse ve tırnaksız değerde boşluk yoksa kapalı değişken kabul edilir (`# enabled=false: işler kuyrukta bekler` bir açıklamadır).
+
 Açıklamayı düzenleme penceresinden değiştirirseniz dosyaya yine `#` satırları olarak yazılır. Bir değişkeni silerseniz açıklama satırları da silinir. Bölüm başlıkları ve diğer yorumlar olduğu gibi kalır.
 
 ### Değerlerin yazılışı

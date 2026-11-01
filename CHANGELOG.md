@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Descriptions can be edited in the variable editor and are saved as `#` lines; new variables added from the template or copied from another file take their description along
 - Section headings: `# ==== / # Title / # ====` blocks (and `# === Title ===`) are shown as group rows in the table
 - Search also matches descriptions and section titles
+- Commented-out variables (`# KEY=value`) are shown as "off" rows and can be switched on/off with the "Active" box in the editor; they count as not set in checks and comparisons. Copying a value into a file where the key is only commented out switches it on
 - Turkish secret words (`sifre`, `parola`, `anahtar`) and names with a `KEY` / `PWD` / `PASS` part (e.g. `WEB_SERVICE_KEY`) are masked
 
 ### Changed

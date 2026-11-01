@@ -111,7 +111,7 @@ func (a *App) rebuildRows() {
 	if ex := a.exampleFile(); ex != nil && ex != f {
 		first := true
 		for _, v := range ex.Variables {
-			if present[v.Key] {
+			if present[v.Key] || v.Disabled {
 				continue
 			}
 			present[v.Key] = true
@@ -234,6 +234,9 @@ func (a *App) updateCell(id widget.TableCellID, obj fyne.CanvasObject) {
 	case colKey:
 		label.TextStyle = fyne.TextStyle{Bold: true, Monospace: true}
 		switch {
+		case r.v.Disabled:
+			icon.SetResource(theme.NewDisabledResource(theme.CheckButtonIcon()))
+			label.Importance = widget.LowImportance
 		case r.kind == rowMissing:
 			icon.SetResource(theme.NewWarningThemedResource(theme.WarningIcon()))
 		case r.kind == rowFile && a.issueIdx[r.idx]:
@@ -268,7 +271,7 @@ func (a *App) updateCell(id widget.TableCellID, obj fyne.CanvasObject) {
 			label.Importance = widget.LowImportance
 			label.Text = secretMask
 		default:
-			if r.kind == rowShell {
+			if r.kind == rowShell || r.v.Disabled {
 				label.Importance = widget.LowImportance
 			}
 			label.Text = displayValue(r.v.Value)
@@ -282,14 +285,17 @@ func (a *App) updateCell(id widget.TableCellID, obj fyne.CanvasObject) {
 		}
 
 	case colSource:
-		switch r.kind {
-		case rowFile:
+		switch {
+		case r.v.Disabled:
+			label.Text = T("source.disabled")
+			label.Importance = widget.LowImportance
+		case r.kind == rowFile:
 			label.Text = T("source.file")
 			label.Importance = widget.SuccessImportance
-		case rowMissing:
+		case r.kind == rowMissing:
 			label.Text = T("source.missing")
 			label.Importance = widget.WarningImportance
-		case rowShell:
+		case r.kind == rowShell:
 			label.Text = T("source.shell")
 			label.Importance = widget.LowImportance
 		}

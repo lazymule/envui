@@ -175,6 +175,12 @@ db.password=                                  db.password right below it
 logger.level=debug # debug, info, warning   ← trailing comment
 ```
 
+### Commented-out variables
+
+Lines such as `# dev.lisans.web=5` are shown in the table as **off**, dimmed. Tick or untick **Active** in the editor to switch them on or off; envui only adds or removes the leading `# `. Commented-out variables count as "not set" in the problem checks and comparisons.
+
+Prose is not mistaken for a variable: a comment only counts when it is exactly `# KEY=value` and an unquoted value has no spaces (`# enabled=false: jobs wait in the queue` is a description).
+
 If you change a description in the editor it is written back as `#` lines. Deleting a variable also deletes its description lines. Section headings and other comments stay as they are.
 
 ### How values are written

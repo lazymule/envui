@@ -43,6 +43,11 @@ func ParseEnv(path, content string) *EnvFile {
 			continue
 		}
 		if strings.HasPrefix(trimmed, "#") {
+			if v, ok := parseDisabled(line); ok {
+				v.Line = i
+				envFile.Variables = append(envFile.Variables, v)
+				continue
+			}
 			envFile.Comments[i] = line
 			continue
 		}
@@ -205,6 +210,32 @@ func parseLine(line string) (Variable, bool) {
 
 	v.IsSecret = IsSecret(v.Key)
 	v.parsedKey, v.parsedValue, v.parsedExport = v.Key, v.Value, v.Export
+	return v, true
+}
+
+// disabledKeyRe: "# KEY=" with a plain variable name right after the "#".
+var disabledKeyRe = regexp.MustCompile(`^\s*#\s?(export\s+)?[A-Za-z_][A-Za-z0-9_.\-]*=`)
+
+// parseDisabled recognises a commented-out variable such as
+// "# dev.lisans.web=5". To avoid mistaking prose for a variable ("# enabled=
+// false: jobs wait in the queue"), an unquoted value may not contain spaces.
+func parseDisabled(line string) (Variable, bool) {
+	if !disabledKeyRe.MatchString(line) || separatorRe.MatchString(line) {
+		return Variable{}, false
+	}
+	rest := strings.TrimLeft(line, " \t")
+	rest = strings.TrimPrefix(rest, "#")
+	rest = strings.TrimPrefix(rest, " ")
+	v, ok := parseLine(rest)
+	if !ok {
+		return v, false
+	}
+	if v.Quote == 0 && strings.ContainsAny(v.Value, " \t") {
+		return v, false
+	}
+	v.Disabled, v.parsedOff = true, true
+	v.raw = line
+	v.TrailingSpace = false
 	return v, true
 }
 
