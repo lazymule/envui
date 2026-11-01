@@ -42,6 +42,7 @@ envui, birden fazla `.env` dosyasındaki ortam değişkenlerini tek bir pencered
 - **Diğer dosyalara kopyala**: Bir değişkeni tek seferde birden fazla dosyaya ekleyin.
 - **Son projeler ve sürükle-bırak**: Son açılan projeler listelenir; klasörü pencereye sürükleyerek de açabilirsiniz.
 - **Güncelleme bildirimi**: Yeni sürüm çıkınca durum çubuğunda haber verir (Ayarlar'dan kapatılabilir).
+- **Açıklamalar ve bölümler**: Değişkenin üstündeki `#` satırları "Açıklama" sütununda görünür, düzenleme penceresinden değiştirilebilir. `# ==== / # Başlık / # ====` blokları tabloda bölüm başlığı olur. Arama açıklamalarda da arar.
 - **Yorumlar ve biçim korunur**: Kaydederken yorumlar, `export` satırları, tırnaklar ve dokunmadığınız satırlar olduğu gibi kalır.
 
 ### Klavye kısayolları
@@ -158,14 +159,50 @@ envui şu dosyaları otomatik olarak bulur:
 
 `.env.example`, `.env.sample` ve `.env.template` şablon dosyası olarak kabul edilir. Eksik değişkenler bunlara göre belirlenir.
 
+## Açıklamalı dosyalar
+
+envui, `.env` dosyasındaki açıklamaları okur:
+
+```bash
+# ============================================================================
+# Veritabanı (SQL Server girişi)            ← bölüm başlığı
+# ============================================================================
+# Kilit beklemesi üst sınırı (ms)           ← db.lock_timeout_ms'in açıklaması
+db.lock_timeout_ms=15000
+# Kullanıcı ve parola zorunlu               ← db.username'in açıklaması;
+db.username=                                  hemen altındaki db.password'e de
+db.password=                                  (soluk olarak) gösterilir
+logger.level=debug # debug, info, warning   ← satır sonu açıklaması
+```
+
+### Kapalı (yoruma alınmış) değişkenler
+
+`# dev.lisans.web=5` gibi yoruma alınmış satırlar tabloda **kapalı** olarak, soluk renkte görünür. Düzenleme penceresindeki **Etkin** kutusuyla tek tıkla açıp kapatabilirsiniz; envui yalnızca satırın başındaki `# `'i ekler ya da kaldırır. Kapalı değişkenler sorun denetiminde ve karşılaştırmada "tanımlı değil" sayılır.
+
+Açıklama cümleleri yanlışlıkla değişken sanılmaz: satır yalnızca `# ANAHTAR=değer` biçimindeyse ve tırnaksız değerde boşluk yoksa kapalı değişken kabul edilir (`# enabled=false: işler kuyrukta bekler` bir açıklamadır).
+
+Açıklamayı düzenleme penceresinden değiştirirseniz dosyaya yine `#` satırları olarak yazılır. Bir değişkeni silerseniz açıklama satırları da silinir. Bölüm başlıkları ve diğer yorumlar olduğu gibi kalır.
+
+### Değerlerin yazılışı
+
+Düzenlediğiniz değerler, `.env` okuyan kütüphanelerin (DelphiMVCFramework, Docker Compose, python-dotenv…) aynen geri okuyacağı biçimde yazılır:
+
+| Değer | Dosyaya yazılış |
+| --- | --- |
+| `logs\analytics` | `logs\analytics` (ters bölü olduğu gibi kalır) |
+| `p#ro$x` | `'p#ro$x'` (`#`, `$`, `"`, `\` varsa tek tırnak) |
+| `merhaba dünya` | `"merhaba dünya"` |
+
 ## Gizli değer algılama
 
 Adında şu ifadeler geçen değişkenler otomatik olarak maskelenir:
 
-- `PASSWORD`, `SECRET`, `TOKEN`
-- `API_KEY`, `APIKEY`, `API_SECRET`
-- `PRIVATE_KEY`, `ACCESS_KEY`
-- `AUTH`, `CREDENTIAL`, `DSN`
+- `PASSWORD`, `PASSWD`, `SECRET`, `TOKEN`, `AUTH`, `CREDENTIAL`, `DSN`
+- `API_KEY`, `APIKEY`, `PRIVATE_KEY`, `ACCESS_KEY`
+- Türkçe: `SIFRE` / `ŞİFRE`, `PAROLA`, `ANAHTAR`
+- Adın bir parçası tam olarak `KEY`, `PWD` ya da `PASS` ise (ör. `WEB_SERVICE_KEY`, `db.pwd`)
+
+Uzunluk, süre ya da sınır belirten adlar maskelenmez (ör. `guvenlik.min_parola_uzunlugu`, `TOKEN_EXPIRE_MINUTES`).
 
 ## Geliştirme
 

@@ -32,6 +32,9 @@ func Validate(f *EnvFile, template *EnvFile) []Issue {
 
 	seen := make(map[string]bool)
 	for i, v := range f.Variables {
+		if v.Disabled {
+			continue // commented out: not read by loaders
+		}
 		if seen[v.Key] {
 			issues = append(issues, Issue{IssueDuplicate, v.Key, i})
 		}
@@ -45,10 +48,12 @@ func Validate(f *EnvFile, template *EnvFile) []Issue {
 	if template != nil && template != f {
 		example := make(map[string]string, len(template.Variables))
 		for _, v := range template.Variables {
-			example[v.Key] = v.Value
+			if !v.Disabled {
+				example[v.Key] = v.Value
+			}
 		}
 		for i, v := range f.Variables {
-			if ex, ok := example[v.Key]; ok && v.Value == "" && ex != "" {
+			if ex, ok := example[v.Key]; ok && !v.Disabled && v.Value == "" && ex != "" {
 				issues = append(issues, Issue{IssueEmptyRequired, v.Key, i})
 			}
 		}

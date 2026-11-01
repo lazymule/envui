@@ -2,6 +2,7 @@ package env
 
 import (
 	"os"
+	"regexp"
 	"strings"
 )
 
@@ -42,6 +43,11 @@ func ParseEnv(path, content string) *EnvFile {
 			continue
 		}
 		if strings.HasPrefix(trimmed, "#") {
+			if v, ok := parseDisabled(line); ok {
+				v.Line = i
+				envFile.Variables = append(envFile.Variables, v)
+				continue
+			}
 			envFile.Comments[i] = line
 			continue
 		}
@@ -53,7 +59,106 @@ func ParseEnv(path, content string) *EnvFile {
 		v.Line = i
 		envFile.Variables = append(envFile.Variables, v)
 	}
+	attachDocs(envFile, len(lines))
 	return envFile
+}
+
+// separatorRe matches decorative comment lines such as "# =========".
+var separatorRe = regexp.MustCompile(`^\s*#\s*(?:={5,}|-{5,}|\*{5,}|#{5,}|~{5,}|_{5,})\s*$`)
+
+// inlineTitleRe matches one-line section titles such as "# === Server ===".
+var inlineTitleRe = regexp.MustCompile(`^\s*#\s*[=\-]{3,}\s*(\S.*?)\s*[=\-]{3,}\s*$`)
+
+func commentText(line string) string {
+	t := strings.TrimSpace(line)
+	t = strings.TrimPrefix(t, "#")
+	return strings.TrimPrefix(t, " ")
+}
+
+// attachDocs fills Doc, GroupDoc and Section of every variable from the
+// comment lines around it.
+func attachDocs(f *EnvFile, nLines int) {
+	f.varLines = make(map[int]bool, len(f.Variables))
+	f.docOwner = make(map[int]int)
+	for _, v := range f.Variables {
+		f.varLines[v.Line] = true
+	}
+
+	// sections: "# ====" / "# Title" (one or more lines) / "# ===="
+	sectionAt := make(map[int]string) // line -> title starting there
+	for i := 0; i < nLines; i++ {
+		c, ok := f.Comments[i]
+		if !ok {
+			continue
+		}
+		if m := inlineTitleRe.FindStringSubmatch(c); m != nil && !separatorRe.MatchString(c) {
+			sectionAt[i] = m[1]
+			continue
+		}
+		if !separatorRe.MatchString(c) {
+			continue
+		}
+		var title []string
+		j := i + 1
+		for ; j < nLines && j <= i+5; j++ {
+			cj, ok := f.Comments[j]
+			if !ok || separatorRe.MatchString(cj) {
+				break
+			}
+			title = append(title, strings.TrimSpace(commentText(cj)))
+		}
+		if j < nLines && len(title) > 0 && separatorRe.MatchString(f.Comments[j]) {
+			sectionAt[i] = strings.Join(title, " ")
+			i = j // the closing separator is not a new section
+		}
+	}
+
+	section := ""
+	idx := 0
+	byLine := make(map[int]int, len(f.Variables))
+	for k, v := range f.Variables {
+		byLine[v.Line] = k
+	}
+	for i := 0; i < nLines; i++ {
+		if t, ok := sectionAt[i]; ok {
+			section = t
+		}
+		k, ok := byLine[i]
+		if !ok {
+			continue
+		}
+		v := &f.Variables[k]
+		v.Section = section
+
+		// doc: comment lines directly above (no blank line, no separator)
+		var doc []string
+		var docLines []int
+		for j := i - 1; j >= 0; j-- {
+			c, ok := f.Comments[j]
+			if !ok || separatorRe.MatchString(c) || inlineTitleRe.MatchString(c) {
+				break
+			}
+			doc = append([]string{commentText(c)}, doc...)
+			docLines = append([]int{j}, docLines...)
+		}
+		v.Doc, v.parsedDoc, v.docLines = strings.Join(doc, "\n"), strings.Join(doc, "\n"), docLines
+		for _, j := range docLines {
+			f.docOwner[j] = i
+		}
+
+		// group doc: the variable right above covers this one too
+		if v.Doc == "" && idx > 0 {
+			prev := f.Variables[k-1]
+			if prev.Line == i-1 {
+				if prev.Doc != "" {
+					v.GroupDoc = prev.Doc
+				} else {
+					v.GroupDoc = prev.GroupDoc
+				}
+			}
+		}
+		idx++
+	}
 }
 
 // parseLine parses a single KEY=VALUE line. It understands an optional
@@ -105,6 +210,32 @@ func parseLine(line string) (Variable, bool) {
 
 	v.IsSecret = IsSecret(v.Key)
 	v.parsedKey, v.parsedValue, v.parsedExport = v.Key, v.Value, v.Export
+	return v, true
+}
+
+// disabledKeyRe: "# KEY=" with a plain variable name right after the "#".
+var disabledKeyRe = regexp.MustCompile(`^\s*#\s?(export\s+)?[A-Za-z_][A-Za-z0-9_.\-]*=`)
+
+// parseDisabled recognises a commented-out variable such as
+// "# dev.lisans.web=5". To avoid mistaking prose for a variable ("# enabled=
+// false: jobs wait in the queue"), an unquoted value may not contain spaces.
+func parseDisabled(line string) (Variable, bool) {
+	if !disabledKeyRe.MatchString(line) || separatorRe.MatchString(line) {
+		return Variable{}, false
+	}
+	rest := strings.TrimLeft(line, " \t")
+	rest = strings.TrimPrefix(rest, "#")
+	rest = strings.TrimPrefix(rest, " ")
+	v, ok := parseLine(rest)
+	if !ok {
+		return v, false
+	}
+	if v.Quote == 0 && strings.ContainsAny(v.Value, " \t") {
+		return v, false
+	}
+	v.Disabled, v.parsedOff = true, true
+	v.raw = line
+	v.TrailingSpace = false
 	return v, true
 }
 

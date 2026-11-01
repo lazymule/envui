@@ -18,7 +18,7 @@ import (
 
 // Version is the application version shown in the About dialog. It can be
 // overridden at build time with -ldflags "-X github.com/mrf/envui/ui.Version=1.2.3".
-var Version = "0.3.0"
+var Version = "0.4.0"
 
 const (
 	repoURL     = "https://github.com/lazymule/envui"

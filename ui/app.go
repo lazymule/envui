@@ -48,7 +48,7 @@ type App struct {
 	query       string
 
 	rows         []row
-	colWidths    [3]float32
+	colWidths    [numCols]float32
 	missingCount int
 	statusTimer  *time.Timer
 
@@ -473,13 +473,19 @@ func (a *App) updateStats() {
 		a.statsLabel.SetText("")
 		return
 	}
-	secrets := 0
+	secrets, disabled := 0, 0
 	for _, v := range f.Variables {
-		if v.IsSecret {
+		switch {
+		case v.Disabled:
+			disabled++
+		case v.IsSecret:
 			secrets++
 		}
 	}
-	parts := []string{Tn("stats.vars", len(f.Variables)), Tn("stats.secrets", secrets)}
+	parts := []string{Tn("stats.vars", len(f.Variables)-disabled), Tn("stats.secrets", secrets)}
+	if disabled > 0 {
+		parts = append(parts, Tn("stats.disabled", disabled))
+	}
 	if ex := a.exampleFile(); ex != nil && ex != f {
 		if a.missingCount > 0 {
 			parts = append(parts, T("status.missing", a.missingCount, filepath.Base(ex.Path)))
@@ -488,7 +494,13 @@ func (a *App) updateStats() {
 		}
 	}
 	if strings.TrimSpace(a.query) != "" {
-		parts = append(parts, Tn("stats.matches", len(a.rows)))
+		n := 0
+		for _, r := range a.rows {
+			if r.kind != rowSection {
+				n++
+			}
+		}
+		parts = append(parts, Tn("stats.matches", n))
 	}
 	a.statsLabel.SetText(strings.Join(parts, "  ·  "))
 }
