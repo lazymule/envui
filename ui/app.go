@@ -68,14 +68,39 @@ type App struct {
 	saveBtn       *widget.Button
 	themedRects   []themedRect
 	onThemeChange []func()
+
+	prefs    Prefs
+	portable bool // settings are kept next to the executable
+
+	// validation and git checks
+	issues       []env.Issue
+	issueIdx     map[int]bool
+	issuesBtn    *widget.Button
+	gitBanner    *fyne.Container
+	gitLabel     *widget.Label
+	unignored    []*env.EnvFile
+	gitDismissed bool
+
+	undoBtn    *widget.Button
+	redoBtn    *widget.Button
+	updateLink *widget.Hyperlink
+
+	// undo / redo
+	undoStack []historyEntry
+	redoStack []historyEntry
+	savedVars map[*env.EnvFile][]env.Variable
 }
 
 // NewApp creates a new application instance
 func NewApp(fyneApp fyne.App, window fyne.Window) *App {
 	dark := fyneApp.Settings().ThemeVariant() == theme.VariantDark
-	dark = fyneApp.Preferences().BoolWithFallback(prefDarkMode, dark)
+	var prefs Prefs = fyneApp.Preferences()
+	portable := portablePath()
+	if portable != "" {
+		prefs = newFilePrefs(portable)
+	}
+	dark = prefs.BoolWithFallback(prefDarkMode, dark)
 
-	prefs := fyneApp.Preferences()
 	SetLanguage(Lang(prefs.StringWithFallback(prefLanguage, string(detectLanguage()))))
 
 	a := &App{
@@ -84,10 +109,13 @@ func NewApp(fyneApp fyne.App, window fyne.Window) *App {
 		dark:        dark,
 		showShell:   prefs.Bool(prefShowShell),
 		showSecrets: prefs.Bool(prefShowSecrets),
+		prefs:       prefs,
+		portable:    portable != "",
 	}
 	window.SetTitle(T("app.title"))
 	fyneApp.Settings().SetTheme(newEnvTheme(dark))
 	window.SetCloseIntercept(a.onClose)
+	window.SetOnDropped(a.onDropped)
 	return a
 }
 
@@ -110,7 +138,10 @@ func (a *App) LoadProject(path string) error {
 		return err
 	}
 	a.project = project
-	a.fyneApp.Preferences().SetString(prefLastFolder, abs)
+	a.resetHistory()
+	a.prefs.SetString(prefLastFolder, abs)
+	a.addRecent(abs)
+	a.checkGit()
 	a.showView()
 	if len(project.Files) > 0 {
 		a.fileList.UnselectAll()
@@ -168,7 +199,11 @@ func (a *App) buildHeader() fyne.CanvasObject {
 	aboutBtn := widget.NewButtonWithIcon("", theme.InfoIcon(), a.showAbout)
 	aboutBtn.Importance = widget.LowImportance
 
-	right := container.NewHBox(reloadBtn, a.themeBtn, settingsBtn, aboutBtn, openBtn)
+	var recentBtn *widget.Button
+	recentBtn = widget.NewButtonWithIcon("", theme.HistoryIcon(), func() { a.showRecentMenu(recentBtn) })
+	recentBtn.Importance = widget.LowImportance
+
+	right := container.NewHBox(recentBtn, reloadBtn, a.themeBtn, settingsBtn, aboutBtn, openBtn)
 	left := container.NewHBox(container.NewPadded(logo), widget.NewSeparator())
 	bar := container.NewBorder(nil, nil, left, right, pathBox)
 
@@ -268,8 +303,11 @@ func (a *App) buildWorkspace() fyne.CanvasObject {
 	addBtn := widget.NewButtonWithIcon(T("toolbar.add"), theme.ContentAddIcon(), a.onAddVariable)
 	addBtn.Importance = widget.HighImportance
 
+	compareBtn := widget.NewButtonWithIcon(T("compare.button"), theme.ViewRestoreIcon(), a.showCompare)
+	compareBtn.Importance = widget.LowImportance
+
 	toolbar := container.NewBorder(nil, nil, a.fileTitle,
-		container.NewHBox(shellCheck, a.secretsBtn, addBtn))
+		container.NewHBox(shellCheck, a.secretsBtn, compareBtn, addBtn))
 
 	a.searchEntry = widget.NewEntry()
 	a.searchEntry.SetPlaceHolder(T("toolbar.search"))
@@ -287,7 +325,7 @@ func (a *App) buildWorkspace() fyne.CanvasObject {
 	)
 
 	main := container.NewBorder(
-		container.NewVBox(toolbar, a.searchEntry),
+		container.NewVBox(a.buildGitBanner(), toolbar, a.searchEntry),
 		nil, nil, nil,
 		tableCard,
 	)
@@ -312,7 +350,20 @@ func (a *App) buildStatusBar() fyne.CanvasObject {
 	a.saveBtn.Importance = widget.HighImportance
 	a.saveBtn.Disable()
 
-	bar := container.NewHBox(a.statsLabel, layout.NewSpacer(), a.statusLabel, a.unsavedLbl, a.saveBtn)
+	a.issuesBtn = widget.NewButtonWithIcon("", theme.NewWarningThemedResource(theme.WarningIcon()), a.showIssues)
+	a.issuesBtn.Importance = widget.LowImportance
+	a.issuesBtn.Hide()
+
+	a.undoBtn = widget.NewButtonWithIcon("", theme.ContentUndoIcon(), a.onUndo)
+	a.undoBtn.Importance = widget.LowImportance
+	a.redoBtn = widget.NewButtonWithIcon("", theme.ContentRedoIcon(), a.onRedo)
+	a.redoBtn.Importance = widget.LowImportance
+
+	a.updateLink = widget.NewHyperlink("", nil)
+	a.updateLink.Hide()
+
+	bar := container.NewHBox(a.statsLabel, a.issuesBtn, layout.NewSpacer(), a.updateLink, a.statusLabel, a.unsavedLbl,
+		a.undoBtn, a.redoBtn, a.saveBtn)
 	return container.NewStack(
 		a.bg(theme.ColorNameHeaderBackground),
 		container.NewBorder(widget.NewSeparator(), nil, nil, nil, container.NewPadded(bar)),
@@ -345,6 +396,14 @@ func (a *App) emptyView(title, message, buttonText string, image, buttonIcon fyn
 		container.NewGridWrap(fyne.NewSize(420, msg.MinSize().Height*2), msg),
 		container.NewCenter(btn),
 	)
+	if a.project == nil {
+		hint := widget.NewLabelWithStyle(T("empty.dropHint"), fyne.TextAlignCenter, fyne.TextStyle{Italic: true})
+		hint.Importance = widget.LowImportance
+		box.Add(hint)
+		if recent := a.recentList(); recent != nil {
+			box.Add(recent)
+		}
+	}
 	return container.NewCenter(box)
 }
 
@@ -391,8 +450,14 @@ func (a *App) refresh() {
 		a.fileTitle.Refresh()
 	}
 
+	a.updateIssues()
 	a.updateStats()
 	a.updateSaveState()
+	a.updateGitBanner()
+	if a.undoBtn != nil {
+		setEnabled(a.undoBtn, len(a.undoStack) > 0)
+		setEnabled(a.redoBtn, len(a.redoStack) > 0)
+	}
 
 	if a.fileList != nil {
 		a.fileList.Refresh()
@@ -426,6 +491,14 @@ func (a *App) updateStats() {
 		parts = append(parts, Tn("stats.matches", len(a.rows)))
 	}
 	a.statsLabel.SetText(strings.Join(parts, "  ·  "))
+}
+
+func setEnabled(b *widget.Button, on bool) {
+	if on {
+		b.Enable()
+	} else {
+		b.Disable()
+	}
 }
 
 func (a *App) updateSaveState() {
@@ -490,11 +563,6 @@ func (a *App) modifiedFiles() []*env.EnvFile {
 	return out
 }
 
-func (a *App) markModified(f *env.EnvFile) {
-	f.Modified = true
-	a.refresh()
-}
-
 // ---------------------------------------------------------------------------
 // Theme
 // ---------------------------------------------------------------------------
@@ -517,7 +585,7 @@ func (a *App) setDark(dark bool) {
 		return
 	}
 	a.dark = dark
-	a.fyneApp.Preferences().SetBool(prefDarkMode, a.dark)
+	a.prefs.SetBool(prefDarkMode, a.dark)
 	a.fyneApp.Settings().SetTheme(newEnvTheme(a.dark))
 	for _, tr := range a.themedRects {
 		if tr.rect == nil {
@@ -542,6 +610,10 @@ func (a *App) registerShortcuts() {
 	c.AddShortcut(&desktop.CustomShortcut{KeyName: fyne.KeyS, Modifier: mod}, func(fyne.Shortcut) { a.onSave() })
 	c.AddShortcut(&desktop.CustomShortcut{KeyName: fyne.KeyN, Modifier: mod}, func(fyne.Shortcut) { a.onAddVariable() })
 	c.AddShortcut(&desktop.CustomShortcut{KeyName: fyne.KeyO, Modifier: mod}, func(fyne.Shortcut) { a.onOpen() })
+	c.AddShortcut(&desktop.CustomShortcut{KeyName: fyne.KeyZ, Modifier: mod}, func(fyne.Shortcut) { a.onUndo() })
+	c.AddShortcut(&desktop.CustomShortcut{KeyName: fyne.KeyY, Modifier: mod}, func(fyne.Shortcut) { a.onRedo() })
+	c.AddShortcut(&desktop.CustomShortcut{KeyName: fyne.KeyZ, Modifier: mod | fyne.KeyModifierShift}, func(fyne.Shortcut) { a.onRedo() })
+	c.AddShortcut(&desktop.CustomShortcut{KeyName: fyne.KeyD, Modifier: mod}, func(fyne.Shortcut) { a.showCompare() })
 	c.SetOnTypedKey(func(ev *fyne.KeyEvent) {
 		if ev.Name == fyne.KeyF1 {
 			a.showAbout()
@@ -588,7 +660,7 @@ func (a *App) onOpen() {
 // Falls back to the last folder itself, or nil (Fyne's default) if neither
 // exists any more.
 func (a *App) folderDialogStart() fyne.ListableURI {
-	last := a.fyneApp.Preferences().String(prefLastFolder)
+	last := a.prefs.String(prefLastFolder)
 	if last == "" {
 		return nil
 	}
@@ -693,6 +765,8 @@ func (a *App) onNewFile() {
 			return
 		}
 		a.project.Files = append(a.project.Files, f)
+		a.markSaved(f)
+		a.checkGit()
 		a.showView()
 		a.refresh()
 		a.selectFile(path)
@@ -717,7 +791,12 @@ func (a *App) onSave() {
 			a.refresh()
 			return
 		}
-		f.Modified = false
+		// re-read the file so new variables get their line numbers and
+		// unchanged-line detection matches what is now on disk
+		if fresh, err := env.ParseEnvFile(f.Path); err == nil {
+			f.Variables, f.Comments, f.CRLF = fresh.Variables, fresh.Comments, fresh.CRLF
+		}
+		a.markSaved(f)
 		saved = append(saved, filepath.Base(f.Path))
 	}
 	a.flashStatus(T("status.saved", strings.Join(saved, ", ")))

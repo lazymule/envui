@@ -1,16 +1,21 @@
 package env
 
 import (
-	"fmt"
 	"os"
 	"sort"
 	"strings"
 )
 
-// WriteEnvFile writes an EnvFile back to disk, preserving comments
+// WriteEnvFile writes an EnvFile back to disk, preserving comments, blank
+// lines, unparsed lines and the exact text of every unchanged variable.
 func WriteEnvFile(envFile *EnvFile) error {
+	return os.WriteFile(envFile.Path, []byte(FormatEnvFile(envFile)), 0644)
+}
+
+// FormatEnvFile renders an EnvFile as it would be written to disk.
+func FormatEnvFile(envFile *EnvFile) string {
 	// Find the maximum line number we need to account for
-	maxLine := 0
+	maxLine := -1
 	for _, v := range envFile.Variables {
 		if v.Line > maxLine {
 			maxLine = v.Line
@@ -22,33 +27,36 @@ func WriteEnvFile(envFile *EnvFile) error {
 		}
 	}
 
-	// Build a map of variables by line number
+	// Build a map of variables by line number (the first one wins if a
+	// line number is somehow shared)
 	varByLine := make(map[int]*Variable)
 	for i := range envFile.Variables {
-		varByLine[envFile.Variables[i].Line] = &envFile.Variables[i]
+		v := &envFile.Variables[i]
+		if v.Line < 0 {
+			continue
+		}
+		if _, taken := varByLine[v.Line]; !taken {
+			varByLine[v.Line] = v
+		}
 	}
 
-	// Build the output preserving original structure
 	var lines []string
-	usedLines := make(map[int]bool)
-
-	// First, write out lines in their original positions
+	written := make(map[*Variable]bool)
 	for i := 0; i <= maxLine; i++ {
 		if comment, ok := envFile.Comments[i]; ok {
 			lines = append(lines, comment)
-			usedLines[i] = true
 		} else if v, ok := varByLine[i]; ok {
 			lines = append(lines, formatVariable(v))
-			usedLines[i] = true
+			written[v] = true
 		} else {
 			lines = append(lines, "")
 		}
 	}
 
-	// Add any new variables (line == -1 or not in used lines)
+	// New variables (and any whose line was already used) go at the end
 	for i := range envFile.Variables {
 		v := &envFile.Variables[i]
-		if v.Line < 0 || !usedLines[v.Line] {
+		if !written[v] {
 			lines = append(lines, formatVariable(v))
 		}
 	}
@@ -58,17 +66,49 @@ func WriteEnvFile(envFile *EnvFile) error {
 		lines = lines[:len(lines)-1]
 	}
 
-	content := strings.Join(lines, "\n") + "\n"
-	return os.WriteFile(envFile.Path, []byte(content), 0644)
+	nl := "\n"
+	if envFile.CRLF {
+		nl = "\r\n"
+	}
+	return strings.Join(lines, nl) + nl
 }
 
-// formatVariable formats a variable for writing to file
+// formatVariable formats a variable for writing to file. Unchanged
+// variables are written exactly as they were read.
 func formatVariable(v *Variable) string {
-	// If value contains spaces or special chars, quote it
-	if strings.ContainsAny(v.Value, " \t\"'#") {
-		return fmt.Sprintf("%s=\"%s\"", v.Key, strings.ReplaceAll(v.Value, "\"", "\\\""))
+	if v.Unchanged() {
+		return v.raw
 	}
-	return fmt.Sprintf("%s=%s", v.Key, v.Value)
+	var b strings.Builder
+	if v.Export {
+		b.WriteString("export ")
+	}
+	b.WriteString(v.Key)
+	b.WriteByte('=')
+	b.WriteString(quoteValue(v.Value, v.Quote))
+	if v.InlineComment != "" {
+		b.WriteString(" ")
+		b.WriteString(v.InlineComment)
+	}
+	return b.String()
+}
+
+// quoteValue returns value in a form that ParseEnv (and common dotenv
+// libraries) read back as exactly the same string.
+func quoteValue(value string, preferred byte) string {
+	special := strings.ContainsAny(value, " \t\"'#\\\n\r") || strings.HasPrefix(value, "=")
+	if !special && preferred == 0 {
+		return value
+	}
+	// single quotes are literal: usable when the value has no ' or newline
+	if preferred == '\'' && !strings.ContainsAny(value, "'\n\r") {
+		return "'" + value + "'"
+	}
+	if !special && preferred == '"' {
+		return `"` + value + `"`
+	}
+	r := strings.NewReplacer(`\`, `\\`, `"`, `\"`, "\n", `\n`, "\r", `\r`)
+	return `"` + r.Replace(value) + `"`
 }
 
 // WriteEnvFileSimple writes variables to a file without preserving structure
@@ -82,8 +122,9 @@ func WriteEnvFileSimple(path string, variables []Variable) error {
 	})
 
 	var lines []string
-	for _, v := range sorted {
-		lines = append(lines, formatVariable(&v))
+	for i := range sorted {
+		sorted[i].raw = "" // always format
+		lines = append(lines, formatVariable(&sorted[i]))
 	}
 
 	content := strings.Join(lines, "\n") + "\n"

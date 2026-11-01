@@ -158,6 +158,8 @@ func (a *App) updateCell(id widget.TableCellID, obj fyne.CanvasObject) {
 		switch {
 		case r.kind == rowMissing:
 			icon.SetResource(theme.NewWarningThemedResource(theme.WarningIcon()))
+		case r.kind == rowFile && a.issueIdx[r.idx]:
+			icon.SetResource(theme.NewErrorThemedResource(theme.ErrorIcon()))
 		case r.v.IsSecret:
 			icon.SetResource(theme.NewDisabledResource(theme.VisibilityOffIcon()))
 		}
@@ -179,14 +181,14 @@ func (a *App) updateCell(id widget.TableCellID, obj fyne.CanvasObject) {
 			} else {
 				label.Text = T("cell.notSet")
 			}
-		case r.v.IsSecret && !a.showSecrets:
-			label.TextStyle = fyne.TextStyle{}
-			label.Importance = widget.LowImportance
-			label.Text = secretMask
 		case r.v.Value == "":
 			label.TextStyle = fyne.TextStyle{}
 			label.Importance = widget.LowImportance
 			label.Text = T("cell.empty")
+		case r.v.IsSecret && !a.showSecrets:
+			label.TextStyle = fyne.TextStyle{}
+			label.Importance = widget.LowImportance
+			label.Text = secretMask
 		default:
 			if r.kind == rowShell {
 				label.Importance = widget.LowImportance

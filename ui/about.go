@@ -10,6 +10,7 @@ import (
 	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/dialog"
+	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 
 	"github.com/mrf/envui/assets"
@@ -17,7 +18,7 @@ import (
 
 // Version is the application version shown in the About dialog. It can be
 // overridden at build time with -ldflags "-X github.com/mrf/envui/ui.Version=1.2.3".
-var Version = "0.2.0"
+var Version = "0.3.0"
 
 const (
 	repoURL     = "https://github.com/lazymule/envui"
@@ -37,6 +38,14 @@ func rendererName() string {
 		return T("about.rendererSoftware", d)
 	}
 	return T("about.rendererHardware")
+}
+
+func (a *App) systemText() string {
+	s := runtime.GOOS + " / " + runtime.GOARCH
+	if a.portable {
+		s += "  ·  " + T("about.portable")
+	}
+	return s
 }
 
 // showAbout opens the About dialog.
@@ -72,7 +81,7 @@ func (a *App) showAbout() {
 		label(T("about.license")), value(T("about.licenseText")),
 		label(T("about.builtWith")), container.NewHBox(link("Fyne", fyneURL), value("·  Go "+runtime.Version()[2:])),
 		label(T("about.renderer")), value(rendererName()),
-		label(T("about.system")), value(runtime.GOOS+" / "+runtime.GOARCH),
+		label(T("about.system")), value(a.systemText()),
 	)
 
 	thanks := widget.NewLabelWithStyle(T("about.thanks"), fyne.TextAlignCenter, fyne.TextStyle{Italic: true})
@@ -98,7 +107,15 @@ func (a *App) showAbout() {
 		thanks,
 	)
 
-	d := dialog.NewCustom(T("about.title"), T("common.close"), content, a.window)
+	var d *dialog.CustomDialog
+	updateBtn := widget.NewButtonWithIcon(T("update.check"), theme.DownloadIcon(), func() {
+		d.Hide()
+		a.checkForUpdatesNow()
+	})
+	closeBtn := widget.NewButton(T("common.close"), func() { d.Hide() })
+	closeBtn.Importance = widget.HighImportance
+	d = dialog.NewCustomWithoutButtons(T("about.title"), content, a.window)
+	d.SetButtons([]fyne.CanvasObject{updateBtn, closeBtn})
 	d.Show()
 }
 

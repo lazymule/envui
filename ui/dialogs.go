@@ -99,6 +99,14 @@ func (a *App) showVariableDialog(f *env.EnvFile, idx int, key, value string) {
 		secretHint,
 		errLabel,
 	)
+	if editing && a.project != nil && len(a.project.Files) > 1 {
+		copyTo := widget.NewButtonWithIcon(T("copyTo.button"), theme.MailForwardIcon(), func() {
+			a.showCopyToFiles(f, strings.TrimSpace(keyEntry.Text), valueEntry.Text)
+		})
+		copyTo.Importance = widget.LowImportance
+		copyTo.Alignment = widget.ButtonAlignLeading
+		form.Add(copyTo)
+	}
 
 	var d *dialog.CustomDialog
 
@@ -110,34 +118,36 @@ func (a *App) showVariableDialog(f *env.EnvFile, idx int, key, value string) {
 			a.window.Canvas().Focus(keyEntry)
 			return
 		}
+		// the name must be unique, unless it is unchanged (so existing
+		// duplicates can still be edited)
 		for i, v := range f.Variables {
-			if v.Key == k && i != idx {
+			if v.Key == k && i != idx && k != key {
 				errLabel.SetText(T("var.exists", k))
 				errLabel.Show()
 				return
 			}
 		}
 
-		if editing {
-			v := &f.Variables[idx]
-			if v.Key == k && v.Value == valueEntry.Text {
-				d.Hide()
-				return
-			}
-			v.Key = k
-			v.Value = valueEntry.Text
-			v.IsSecret = env.IsSecret(k)
-		} else {
-			f.Variables = append(f.Variables, env.Variable{
-				Key:      k,
-				Value:    valueEntry.Text,
-				Source:   env.SourceFile,
-				IsSecret: env.IsSecret(k),
-				Line:     -1, // new variable, appended on save
-			})
-		}
 		d.Hide()
-		a.markModified(f)
+		a.mutate([]*env.EnvFile{f}, func() {
+			if editing {
+				v := &f.Variables[idx]
+				if v.TrailingSpace {
+					v.MarkEdited() // saving cleans up the stray spaces
+				}
+				v.Key = k
+				v.Value = valueEntry.Text
+				v.IsSecret = env.IsSecret(k)
+			} else {
+				f.Variables = append(f.Variables, env.Variable{
+					Key:      k,
+					Value:    valueEntry.Text,
+					Source:   env.SourceFile,
+					IsSecret: env.IsSecret(k),
+					Line:     -1, // new variable, appended on save
+				})
+			}
+		})
 	}
 	keyEntry.OnSubmitted = func(string) { a.window.Canvas().Focus(valueEntry) }
 	valueEntry.OnSubmitted = func(string) { save() }
@@ -157,9 +167,11 @@ func (a *App) showVariableDialog(f *env.EnvFile, idx int, key, value string) {
 				T("var.deleteAsk", f.Variables[idx].Key, filepath.Base(f.Path)),
 				T("common.delete"),
 				func() {
-					f.Variables = append(f.Variables[:idx], f.Variables[idx+1:]...)
 					d.Hide()
-					a.markModified(f)
+					a.mutate([]*env.EnvFile{f}, func() {
+						vars := copyVars(f.Variables)
+						f.Variables = append(vars[:idx], vars[idx+1:]...)
+					})
 				})
 		})
 		deleteBtn.Importance = widget.DangerImportance

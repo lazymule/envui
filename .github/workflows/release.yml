@@ -32,7 +32,7 @@ jobs:
       - name: Install build dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y libgl1-mesa-dev xorg-dev gcc-mingw-w64-x86-64 p7zip-full zip
+          sudo apt-get install -y libgl1-mesa-dev xorg-dev gcc-mingw-w64-x86-64 p7zip-full zip nsis
 
       - name: Test
         run: go test ./...
@@ -40,23 +40,18 @@ jobs:
       - name: Build
         run: |
           VERSION="${TAG#v}"
-          LDFLAGS="-s -w -X github.com/mrf/envui/ui.Version=${VERSION}"
           mkdir -p dist
 
-          # Windows (icon + version info come from rsrc_windows_amd64.syso)
-          CGO_ENABLED=1 GOOS=windows GOARCH=amd64 CC=x86_64-w64-mingw32-gcc \
-            go build -ldflags "-H=windowsgui ${LDFLAGS}" -o dist/envui.exe .
-
-          # Windows package for virtual machines / Remote Desktop (with Mesa)
-          EXTRA_LDFLAGS="-X github.com/mrf/envui/ui.Version=${VERSION}" tools/package_vm.sh
+          # Windows: exe, installer and portable zips (with/without Mesa)
+          tools/package_windows.sh "${VERSION}"
 
           # Linux
-          go build -ldflags "${LDFLAGS}" -o dist/envui .
+          go build -ldflags "-s -w -X github.com/mrf/envui/ui.Version=${VERSION}" -o dist/envui .
           tar -C dist -czf dist/envui-linux-amd64.tar.gz envui
 
           cd dist
-          mv envui.exe envui-windows-amd64.exe
-          sha256sum envui-windows-amd64.exe envui-windows-vm.zip envui-linux-amd64.tar.gz > SHA256SUMS.txt
+          sha256sum envui-setup.exe envui-windows-amd64.exe envui-portable.zip envui-portable-vm.zip \
+            envui-linux-amd64.tar.gz > SHA256SUMS.txt
           cat SHA256SUMS.txt
 
       - name: Release notes
@@ -67,8 +62,10 @@ jobs:
             echo
             echo "| Dosya | Ne zaman? |"
             echo "| --- | --- |"
-            echo "| \`envui-windows-amd64.exe\` | Windows (ekran kartı olan normal bilgisayarlar) |"
-            echo "| \`envui-windows-vm.zip\` | Windows sanal makine / Uzak Masaüstü — \"WGL: The driver does not appear to support OpenGL\" hatası alıyorsanız. Üç dosyayı aynı klasöre çıkarın. |"
+            echo "| \`envui-setup.exe\` | **Windows kurulum** (önerilen). Başlat menüsü kısayolu ve kaldırma desteği. Sanal makine için \"Yazılımsal OpenGL\" bileşenini seçin. |"
+            echo "| \`envui-portable.zip\` | Windows **taşınabilir** sürüm: kurulum yok, ayarlar programın yanında saklanır (USB bellek). |"
+            echo "| \`envui-portable-vm.zip\` | Taşınabilir sürüm + Mesa: **sanal makine / Uzak Masaüstü** (\"WGL: The driver does not appear to support OpenGL\" hatası). |"
+            echo "| \`envui-windows-amd64.exe\` | Yalnızca program dosyası |"
             echo "| \`envui-linux-amd64.tar.gz\` | Linux (x86-64) |"
             echo
             echo "## Değişiklikler / Changes"
@@ -94,7 +91,9 @@ jobs:
           name: envui ${{ env.TAG }}
           body_path: release-notes.md
           files: |
+            dist/envui-setup.exe
+            dist/envui-portable.zip
+            dist/envui-portable-vm.zip
             dist/envui-windows-amd64.exe
-            dist/envui-windows-vm.zip
             dist/envui-linux-amd64.tar.gz
             dist/SHA256SUMS.txt

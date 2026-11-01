@@ -33,5 +33,6 @@ func main() {
 		}
 	}
 
+	appUI.AfterStart()
 	w.ShowAndRun()
 }

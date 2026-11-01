@@ -7,6 +7,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-11-01
+
+### Added
+
+- Compare two env files side by side (Ctrl+D); click a row to copy a value across
+- Problem checks: duplicate keys, values with leading/trailing spaces, values that are empty although the template has one
+- Warning when env files are not ignored by git, with a one-click "Add to .gitignore"
+- Undo / redo (Ctrl+Z, Ctrl+Y / Ctrl+Shift+Z) for every edit, across files
+- "Copy to other files" in the variable editor
+- Recent projects (header button and start screen) and opening a folder by drag and drop
+- Update notice in the status bar (daily check, can be turned off) and "Check for updates" in About
+- Portable edition: settings are kept in `envui-portable.json` next to the exe
+- Windows installer (`envui-setup.exe`) with Start menu / desktop shortcuts, uninstaller and an optional software OpenGL component
+- `tools/package_windows.sh` builds the exe, installer and portable zips (replaces `package_vm.sh`)
+
+### Changed
+
+- Developer shown in About is Kemal BAYAT
+
+### Fixed
+
+- Values containing quotes or backslashes gained an extra backslash on every save
+- `export KEY=value` lines and trailing `# comments` are now understood and kept
+- Lines that are not `KEY=value` are no longer dropped when saving
+- Windows (CRLF) line endings are kept
+- Unchanged lines are written back byte-for-byte
+- Keys that appear twice in a file can now be edited
+- Empty secret values show "empty" instead of a mask
+
 ## [0.2.0] - 2026-10-31
 
 ### Added

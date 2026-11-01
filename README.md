@@ -35,7 +35,14 @@ envui, birden fazla `.env` dosyasındaki ortam değişkenlerini tek bir pencered
 - **Açık ve koyu tema**: GLARK kurumsal renkleriyle uyumludur. Seçiminiz bir sonraki açılışta da geçerli olur.
 - **Dil desteği**: Türkçe ve İngilizce. Sistem diline göre otomatik seçilir, Ayarlar'dan değiştirilebilir.
 - **Klasör hatırlama**: Klasör seçme penceresi en son açtığınız projenin yanından başlar.
-- **Yorumlar korunur**: Kaydederken dosyadaki yorum satırlarınız silinmez.
+- **Dosya karşılaştırma**: İki dosyayı (ör. `.env` ve `.env.staging`) yan yana görün. Farklı, eksik ve fazla değişkenler renkle işaretlenir. Bir satıra tıklayarak değeri diğer dosyaya kopyalayabilirsiniz.
+- **Sorun denetimi**: İki kez tanımlanmış anahtarlar, başında/sonunda boşluk olan değerler ve `.env.example`'da dolu olup sizde boş kalanlar işaretlenir.
+- **Git uyarısı**: `.env` dosyalarınız git tarafından yok sayılmıyorsa uyarır, tek tıkla `.gitignore`'a ekler.
+- **Geri al / yinele**: Ctrl+Z ve Ctrl+Y ile tüm düzenlemeler geri alınabilir.
+- **Diğer dosyalara kopyala**: Bir değişkeni tek seferde birden fazla dosyaya ekleyin.
+- **Son projeler ve sürükle-bırak**: Son açılan projeler listelenir; klasörü pencereye sürükleyerek de açabilirsiniz.
+- **Güncelleme bildirimi**: Yeni sürüm çıkınca durum çubuğunda haber verir (Ayarlar'dan kapatılabilir).
+- **Yorumlar ve biçim korunur**: Kaydederken yorumlar, `export` satırları, tırnaklar ve dokunmadığınız satırlar olduğu gibi kalır.
 
 ### Klavye kısayolları
 
@@ -45,11 +52,24 @@ envui, birden fazla `.env` dosyasındaki ortam değişkenlerini tek bir pencered
 | `Ctrl+N` | Değişken ekle |
 | `Ctrl+F` | Ara |
 | `Ctrl+O` | Klasör aç |
+| `Ctrl+Z` / `Ctrl+Y` | Geri al / yinele |
+| `Ctrl+D` | Dosyaları karşılaştır |
 | `F1` | Hakkında penceresi |
 
 macOS'ta `Ctrl` yerine `Cmd` kullanılır.
 
 ## Kurulum
+
+### İndirme (Windows)
+
+[Sürümler](https://github.com/lazymule/envui/releases) sayfasından birini seçin:
+
+| Dosya | Ne zaman? |
+| --- | --- |
+| `envui-setup.exe` | **Önerilen.** Kurulum sihirbazı, Başlat menüsü kısayolu ve kaldırma desteği. |
+| `envui-portable.zip` | **Taşınabilir** sürüm: kurulum yok, ayarlar programın yanındaki `envui-portable.json` dosyasında tutulur. USB bellek için ideal. |
+| `envui-portable-vm.zip` | Taşınabilir sürüm + yazılımsal OpenGL: **sanal makine / Uzak Masaüstü** için. |
+| `envui-windows-amd64.exe` | Yalnızca program dosyası. |
 
 ### Kaynaktan derleme
 
@@ -102,13 +122,7 @@ Windows'ta `envui.exe` dosyasına çift tıklamanız yeterli.
 
 envui pencereyi çizmek için OpenGL 2.1 kullanır. Sanal makinelerde (VirtualBox, Hyper-V, VMware), Uzak Masaüstü (RDP) oturumlarında ve ekran kartı sürücüsü olmayan bilgisayarlarda OpenGL bulunmayabilir.
 
-**Çözüm:** Sanal makine paketini kullanın. Bu paket, envui.exe'nin yanına Mesa'nın yazılımsal OpenGL sürücüsünü (`opengl32.dll`, `libgallium_wgl.dll`) ekler. envui bu dosyaları kendi klasöründe görünce çizimi ekran kartı yerine işlemciyle yapar. Sistemdeki diğer programlar etkilenmez. Paketi oluşturmak için:
-
-```bash
-tools/package_vm.sh
-```
-
-Komut `dist/envui-windows-vm.zip` dosyasını üretir. Zip'teki üç dosyayı aynı klasöre çıkarıp `envui.exe`'yi çalıştırın.
+**Çözüm:** `envui-portable-vm.zip` paketini kullanın ya da kurulumda **"Yazılımsal OpenGL"** bileşenini seçin. Bu, envui.exe'nin yanına Mesa'nın yazılımsal OpenGL sürücüsünü (`opengl32.dll`, `libgallium_wgl.dll`) ekler. envui bu dosyaları kendi klasöründe görünce çizimi ekran kartı yerine işlemciyle yapar. Sistemdeki diğer programlar etkilenmez.
 
 Ekran kartı olan bir bilgisayara RDP ile bağlanıyorsanız, uzak bilgisayarda şu Grup İlkesi ayarını etkinleştirmek de işe yarar: *Uzak Masaüstü Oturumu Ana Bilgisayarı → Uzak Oturum Ortamı → "Tüm Uzak Masaüstü Hizmetleri oturumları için donanım grafik bağdaştırıcılarını kullan"*.
 
@@ -118,7 +132,9 @@ Başlıktaki ⚙ simgesiyle açılır:
 
 - **Dil**: Türkçe veya English. Arayüz anında yenilenir, açık proje ve kaydedilmemiş değişiklikler kaybolmaz.
 - **Tema**: Açık veya Koyu.
-- **Açılışta**: Sistem değişkenlerinin ve gizli değerlerin gösterilip gösterilmeyeceği.
+- **Açılışta**: Sistem değişkenlerinin ve gizli değerlerin gösterilip gösterilmeyeceği, güncellemelerin denetlenip denetlenmeyeceği.
+
+Güncelleme denetimi günde en fazla bir kez GitHub'daki son sürüm bilgisini okur; başka bir veri gönderilmez.
 
 Klasör seçme penceresi Fyne'ın kendi bileşeni olduğu için her zaman İngilizce görünür.
 
@@ -165,6 +181,12 @@ Simgeyi yeniden üretmek için `python3 tools/make_icon.py` komutunu çalıştı
 
 ```bash
 x86_64-w64-mingw32-windres -O coff -i winres/envui.rc -o rsrc_windows_amd64.syso
+```
+
+Tüm Windows paketlerini (exe, kurulum, taşınabilir zip'ler) üretmek için (`go`, `x86_64-w64-mingw32-gcc`, `7z`, `zip`, `makensis` gerekir):
+
+```bash
+tools/package_windows.sh
 ```
 
 Yeni bir dil eklemek için `ui/i18n.go` dosyasındaki `messages` tablosuna bir bölüm ve `languages` listesine bir satır eklemeniz yeterli. Testler, eksik çeviri kaldıysa uyarır.
