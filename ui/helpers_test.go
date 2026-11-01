@@ -82,3 +82,37 @@ func TestTranslations(t *testing.T) {
 		}
 	}
 }
+
+func TestIsNewer(t *testing.T) {
+	cases := []struct {
+		a, b string
+		want bool
+	}{
+		{"v0.3.0", "0.2.0", true},
+		{"0.2.0", "v0.2.0", false},
+		{"v0.10.0", "0.9.9", true},
+		{"v1.0", "0.99.99", true},
+		{"v0.2.1-beta", "0.2.0", true},
+		{"0.1.9", "0.2.0", false},
+	}
+	for _, c := range cases {
+		if got := isNewer(c.a, c.b); got != c.want {
+			t.Errorf("isNewer(%q, %q) = %v", c.a, c.b, got)
+		}
+	}
+}
+
+func TestFilePrefs(t *testing.T) {
+	path := t.TempDir() + "/envui-portable.json"
+	p := newFilePrefs(path)
+	p.SetBool("dark", true)
+	p.SetString("lang", "tr")
+
+	q := newFilePrefs(path) // reload from disk
+	if !q.Bool("dark") || q.String("lang") != "tr" {
+		t.Errorf("values not persisted: %v %q", q.Bool("dark"), q.String("lang"))
+	}
+	if q.BoolWithFallback("missing", true) != true || q.StringWithFallback("missing", "x") != "x" {
+		t.Error("fallbacks not used")
+	}
+}

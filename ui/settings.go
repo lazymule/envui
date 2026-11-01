@@ -13,7 +13,7 @@ import (
 
 // showSettings opens the settings dialog (language, theme, startup options).
 func (a *App) showSettings() {
-	prefs := a.fyneApp.Preferences()
+	prefs := a.prefs
 
 	names := make([]string, len(languages))
 	selected := ""
@@ -45,6 +45,9 @@ func (a *App) showSettings() {
 	secretsCheck := widget.NewCheck(T("settings.secrets"), nil)
 	secretsCheck.SetChecked(prefs.Bool(prefShowSecrets))
 
+	updatesCheck := widget.NewCheck(T("settings.updates"), nil)
+	updatesCheck.SetChecked(prefs.BoolWithFallback(prefCheckUpdates, true))
+
 	note := widget.NewLabel(T("settings.note"))
 	note.Importance = widget.LowImportance
 	note.Wrapping = fyne.TextWrapWord
@@ -55,7 +58,7 @@ func (a *App) showSettings() {
 	form := widget.NewForm(
 		widget.NewFormItem(T("settings.language"), langSelect),
 		widget.NewFormItem(T("settings.theme"), themeRadio),
-		widget.NewFormItem(T("settings.startup"), container.NewVBox(shellCheck, secretsCheck)),
+		widget.NewFormItem(T("settings.startup"), container.NewVBox(shellCheck, secretsCheck, updatesCheck)),
 	)
 
 	var d *dialog.CustomDialog
@@ -64,6 +67,7 @@ func (a *App) showSettings() {
 
 		prefs.SetBool(prefShowShell, shellCheck.Checked)
 		prefs.SetBool(prefShowSecrets, secretsCheck.Checked)
+		prefs.SetBool(prefCheckUpdates, updatesCheck.Checked)
 		a.setDark(themeRadio.Selected == dark)
 
 		newLang := CurrentLanguage()

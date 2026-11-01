@@ -21,44 +21,136 @@ func ParseEnvFile(path string) (*EnvFile, error) {
 	if err != nil {
 		return nil, err
 	}
+	return ParseEnv(path, string(content)), nil
+}
 
+// ParseEnv parses the contents of a .env file. Lines that are not
+// KEY=VALUE pairs (comments, blank or malformed lines) are kept verbatim so
+// that saving never drops anything.
+func ParseEnv(path, content string) *EnvFile {
 	envFile := &EnvFile{
 		Path:     path,
 		Comments: make(map[int]string),
+		CRLF:     strings.Contains(content, "\r\n"),
 	}
 
-	lines := strings.Split(string(content), "\n")
+	lines := strings.Split(content, "\n")
 	for i, line := range lines {
+		line = strings.TrimSuffix(line, "\r")
 		trimmed := strings.TrimSpace(line)
-
-		// Preserve comments
+		if trimmed == "" {
+			continue
+		}
 		if strings.HasPrefix(trimmed, "#") {
 			envFile.Comments[i] = line
 			continue
 		}
-
-		// Skip empty lines
-		if trimmed == "" {
+		v, ok := parseLine(line)
+		if !ok {
+			envFile.Comments[i] = line // keep malformed lines untouched
 			continue
 		}
+		v.Line = i
+		envFile.Variables = append(envFile.Variables, v)
+	}
+	return envFile
+}
 
-		// Parse KEY=value
-		parts := strings.SplitN(trimmed, "=", 2)
-		if len(parts) != 2 {
-			continue
-		}
+// parseLine parses a single KEY=VALUE line. It understands an optional
+// "export " prefix, single and double quotes (with \" \\ \n escapes inside
+// double quotes) and trailing "# comments" after the value.
+func parseLine(line string) (Variable, bool) {
+	rest := strings.TrimLeft(line, " \t")
+	v := Variable{Source: SourceFile, raw: line}
 
-		key := strings.TrimSpace(parts[0])
-		value := unquote(strings.TrimSpace(parts[1]))
-
-		envFile.Variables = append(envFile.Variables, Variable{
-			Key:      key,
-			Value:    value,
-			Source:   SourceFile,
-			IsSecret: IsSecret(key),
-			Line:     i,
-		})
+	if strings.HasPrefix(rest, "export ") || strings.HasPrefix(rest, "export\t") {
+		v.Export = true
+		rest = strings.TrimLeft(rest[len("export"):], " \t")
 	}
 
-	return envFile, nil
+	eq := strings.IndexByte(rest, '=')
+	if eq <= 0 {
+		return v, false
+	}
+	v.Key = strings.TrimSpace(rest[:eq])
+	if v.Key == "" || strings.ContainsAny(v.Key, " \t") {
+		return v, false
+	}
+	rest = strings.TrimLeft(rest[eq+1:], " \t")
+
+	var after string
+	switch {
+	case strings.HasPrefix(rest, `"`):
+		value, end, ok := scanDoubleQuoted(rest)
+		if !ok {
+			v.Value, v.InlineComment, v.TrailingSpace = splitUnquoted(rest)
+			break
+		}
+		v.Value, v.Quote, after = value, '"', rest[end:]
+	case strings.HasPrefix(rest, "'"):
+		end := strings.IndexByte(rest[1:], '\'')
+		if end < 0 {
+			v.Value, v.InlineComment, v.TrailingSpace = splitUnquoted(rest)
+			break
+		}
+		v.Value, v.Quote, after = rest[1:1+end], '\'', rest[end+2:]
+	default:
+		v.Value, v.InlineComment, v.TrailingSpace = splitUnquoted(rest)
+	}
+	if v.Quote != 0 {
+		if c := strings.TrimSpace(after); strings.HasPrefix(c, "#") {
+			v.InlineComment = c
+		}
+	}
+
+	v.IsSecret = IsSecret(v.Key)
+	v.parsedKey, v.parsedValue, v.parsedExport = v.Key, v.Value, v.Export
+	return v, true
+}
+
+// scanDoubleQuoted reads a double-quoted value starting at s[0] == '"'.
+// It returns the unescaped value and the index just after the closing quote.
+func scanDoubleQuoted(s string) (string, int, bool) {
+	var b strings.Builder
+	for i := 1; i < len(s); i++ {
+		c := s[i]
+		switch {
+		case c == '\\' && i+1 < len(s):
+			i++
+			switch s[i] {
+			case 'n':
+				b.WriteByte('\n')
+			case 'r':
+				b.WriteByte('\r')
+			case 't':
+				b.WriteByte('\t')
+			case '"', '\\':
+				b.WriteByte(s[i])
+			default: // unknown escape: keep it as written
+				b.WriteByte('\\')
+				b.WriteByte(s[i])
+			}
+		case c == '"':
+			return b.String(), i + 1, true
+		default:
+			b.WriteByte(c)
+		}
+	}
+	return "", 0, false
+}
+
+// splitUnquoted separates an unquoted value from a trailing " # comment".
+// A '#' only starts a comment when preceded by whitespace, so values such as
+// URL fragments (http://x/#top) or colours (#fff... after '=') stay intact.
+func splitUnquoted(s string) (value, comment string, trailingSpace bool) {
+	for i := 1; i < len(s); i++ {
+		if s[i] == '#' && (s[i-1] == ' ' || s[i-1] == '\t') {
+			comment = strings.TrimSpace(s[i:])
+			s = s[:i]
+			break
+		}
+	}
+	value = strings.TrimRight(s, " \t")
+	trailingSpace = value != s && comment == ""
+	return value, comment, trailingSpace
 }
