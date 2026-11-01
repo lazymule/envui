@@ -37,13 +37,19 @@ func (a *App) onAddVariable() {
 		a.showInfo(T("var.noFileTitle"), T("var.noFileText"))
 		return
 	}
-	a.showVariableDialog(f, -1, "", "")
+	a.showVariableDialog(f, -1, "", "", "")
 }
 
 // showVariableDialog shows the add/edit dialog. idx is the index of the
-// variable in f.Variables, or -1 to add a new one.
-func (a *App) showVariableDialog(f *env.EnvFile, idx int, key, value string) {
+// variable in f.Variables, or -1 to add a new one; doc is the suggested
+// description for a new variable (e.g. from the template).
+func (a *App) showVariableDialog(f *env.EnvFile, idx int, key, value, doc string) {
 	editing := idx >= 0
+	groupDoc := ""
+	if editing {
+		doc = f.Variables[idx].Doc
+		groupDoc = f.Variables[idx].GroupDoc
+	}
 
 	keyEntry := widget.NewEntry()
 	keyEntry.SetPlaceHolder("VARIABLE_NAME")
@@ -90,6 +96,12 @@ func (a *App) showVariableDialog(f *env.EnvFile, idx int, key, value string) {
 	})
 	copyBtn.Importance = widget.LowImportance
 
+	docEntry := widget.NewMultiLineEntry()
+	docEntry.Wrapping = fyne.TextWrapWord
+	docEntry.SetMinRowsVisible(3)
+	docEntry.SetPlaceHolder(T("var.docHint"))
+	docEntry.SetText(doc)
+
 	form := container.NewVBox(
 		width,
 		caption(T("var.name")),
@@ -97,11 +109,20 @@ func (a *App) showVariableDialog(f *env.EnvFile, idx int, key, value string) {
 		caption(T("var.value")),
 		container.NewBorder(nil, nil, nil, copyBtn, valueEntry),
 		secretHint,
-		errLabel,
+		caption(T("var.doc")),
 	)
+	if groupDoc != "" && doc == "" {
+		// the comment above the group also describes this variable
+		inherited := widget.NewLabel(T("var.docGroup", truncate(strings.Join(strings.Fields(groupDoc), " "), 220)))
+		inherited.Wrapping = fyne.TextWrapWord
+		inherited.Importance = widget.LowImportance
+		form.Add(inherited)
+	}
+	form.Add(docEntry)
+	form.Add(errLabel)
 	if editing && a.project != nil && len(a.project.Files) > 1 {
 		copyTo := widget.NewButtonWithIcon(T("copyTo.button"), theme.MailForwardIcon(), func() {
-			a.showCopyToFiles(f, strings.TrimSpace(keyEntry.Text), valueEntry.Text)
+			a.showCopyToFiles(f, strings.TrimSpace(keyEntry.Text), valueEntry.Text, cleanDoc(docEntry.Text))
 		})
 		copyTo.Importance = widget.LowImportance
 		copyTo.Alignment = widget.ButtonAlignLeading
@@ -138,6 +159,7 @@ func (a *App) showVariableDialog(f *env.EnvFile, idx int, key, value string) {
 				v.Key = k
 				v.Value = valueEntry.Text
 				v.IsSecret = env.IsSecret(k)
+				v.Doc = cleanDoc(docEntry.Text)
 			} else {
 				f.Variables = append(f.Variables, env.Variable{
 					Key:      k,
@@ -145,6 +167,7 @@ func (a *App) showVariableDialog(f *env.EnvFile, idx int, key, value string) {
 					Source:   env.SourceFile,
 					IsSecret: env.IsSecret(k),
 					Line:     -1, // new variable, appended on save
+					Doc:      cleanDoc(docEntry.Text),
 				})
 			}
 		})
@@ -220,4 +243,19 @@ func (a *App) showConfirm(title, message, confirmText string, onConfirm func()) 
 	d.SetConfirmText(confirmText)
 	d.SetDismissText(T("common.cancel"))
 	d.Show()
+}
+
+// cleanDoc normalises a description typed in the editor: no trailing
+// spaces, no leading/trailing blank lines, and a leading "#" typed by
+// habit is dropped (the file gets one anyway).
+func cleanDoc(s string) string {
+	lines := strings.Split(strings.ReplaceAll(s, "\r\n", "\n"), "\n")
+	for i, l := range lines {
+		l = strings.TrimRight(l, " \t")
+		if t := strings.TrimLeft(l, " "); strings.HasPrefix(t, "#") {
+			l = strings.TrimPrefix(strings.TrimPrefix(t, "#"), " ")
+		}
+		lines[i] = l
+	}
+	return strings.Trim(strings.Join(lines, "\n"), "\n")
 }

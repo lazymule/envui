@@ -1,6 +1,8 @@
 package ui
 
 import (
+	"reflect"
+
 	"github.com/mrf/envui/env"
 )
 
@@ -28,12 +30,7 @@ func sameVars(a, b []env.Variable) bool {
 	if len(a) != len(b) {
 		return false
 	}
-	for i := range a {
-		if a[i] != b[i] {
-			return false
-		}
-	}
-	return true
+	return reflect.DeepEqual(a, b)
 }
 
 func capture(files []*env.EnvFile) historyEntry {

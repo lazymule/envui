@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-11-01
+
+### Added
+
+- Description column: the `#` comment lines directly above a variable (or its trailing `# comment`) are shown in the table; a comment that covers a group of variables is shown, dimmed, for the variables below it too
+- Descriptions can be edited in the variable editor and are saved as `#` lines; new variables added from the template or copied from another file take their description along
+- Section headings: `# ==== / # Title / # ====` blocks (and `# === Title ===`) are shown as group rows in the table
+- Search also matches descriptions and section titles
+- Turkish secret words (`sifre`, `parola`, `anahtar`) and names with a `KEY` / `PWD` / `PASS` part (e.g. `WEB_SERVICE_KEY`) are masked
+
+### Changed
+
+- Edited values are quoted the way dotenv loaders (incl. DelphiMVCFramework) expect: single quotes for values with `#`, `$`, `"` or `\`; backslashes alone (Windows paths) are no longer quoted or escaped
+- Deleting a variable also removes its line and its description instead of leaving a blank line
+- Names describing a length, duration or limit (`min_parola_uzunlugu`, `TOKEN_EXPIRE_MINUTES`) are no longer treated as secrets
+
+### Fixed
+
+- Editing a value with a backslash (e.g. `logs\analytics`) wrote `"logs\\analytics"`, which some loaders read with a doubled backslash
+- Values with `$` were written in double quotes, where loaders may expand `$VARIABLES`
+
 ## [0.3.0] - 2026-11-01
 
 ### Added

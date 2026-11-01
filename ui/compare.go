@@ -219,7 +219,7 @@ func (a *App) showCopyBetween(r env.DiffRow, left, right *env.EnvFile, done func
 	if r.Kind != env.DiffOnlyRight { // left has a value
 		b := widget.NewButtonWithIcon(T("compare.copyTo", rn), theme.NavigateNextIcon(), func() {
 			d.Hide()
-			a.setValue(right, r.Key, r.Left)
+			a.setValue(right, left, r.Key, r.Left)
 			done()
 		})
 		b.Importance = widget.HighImportance
@@ -228,7 +228,7 @@ func (a *App) showCopyBetween(r env.DiffRow, left, right *env.EnvFile, done func
 	if r.Kind != env.DiffOnlyLeft { // right has a value
 		b := widget.NewButtonWithIcon(T("compare.copyTo", ln), theme.NavigateBackIcon(), func() {
 			d.Hide()
-			a.setValue(left, r.Key, r.Right)
+			a.setValue(left, right, r.Key, r.Right)
 			done()
 		})
 		buttons = append(buttons, b)
@@ -238,15 +238,22 @@ func (a *App) showCopyBetween(r env.DiffRow, left, right *env.EnvFile, done func
 	d.Show()
 }
 
-// setValue sets key in f (adding it at the end if missing) as one undoable step.
-func (a *App) setValue(f *env.EnvFile, key, value string) {
-	a.setValues([]*env.EnvFile{f}, key, value, true)
+// setValue sets key in f (adding it at the end if missing) as one undoable
+// step. A new variable takes over the description of the same key in from.
+func (a *App) setValue(f, from *env.EnvFile, key, value string) {
+	doc := ""
+	for _, v := range from.Variables {
+		if v.Key == key {
+			doc = v.Doc
+		}
+	}
+	a.setValues([]*env.EnvFile{f}, key, value, doc, true)
 	a.flashStatus(T("status.copiedTo", key, filepath.Base(f.Path)))
 }
 
 // setValues sets key in every file of targets. Existing values are only
-// replaced when overwrite is true.
-func (a *App) setValues(targets []*env.EnvFile, key, value string, overwrite bool) {
+// replaced when overwrite is true; new variables get doc as description.
+func (a *App) setValues(targets []*env.EnvFile, key, value, doc string, overwrite bool) {
 	a.mutate(targets, func() {
 		for _, f := range targets {
 			found := false
@@ -262,7 +269,7 @@ func (a *App) setValues(targets []*env.EnvFile, key, value string, overwrite boo
 			if !found {
 				vars = append(vars, env.Variable{
 					Key: key, Value: value, Source: env.SourceFile,
-					IsSecret: env.IsSecret(key), Line: -1,
+					IsSecret: env.IsSecret(key), Line: -1, Doc: doc,
 				})
 			}
 			f.Variables = vars
@@ -271,7 +278,7 @@ func (a *App) setValues(targets []*env.EnvFile, key, value string, overwrite boo
 }
 
 // showCopyToFiles copies a variable from f into other files of the project.
-func (a *App) showCopyToFiles(f *env.EnvFile, key, value string) {
+func (a *App) showCopyToFiles(f *env.EnvFile, key, value, doc string) {
 	if a.project == nil {
 		return
 	}
@@ -325,7 +332,7 @@ func (a *App) showCopyToFiles(f *env.EnvFile, key, value string) {
 			return
 		}
 		// ticking a file means "put this value there", replacing any other value
-		a.setValues(targets, key, value, true)
+		a.setValues(targets, key, value, doc, true)
 		a.flashStatus(T("status.copiedTo", key, joinNames(names)))
 	}, a.window)
 	d.Show()

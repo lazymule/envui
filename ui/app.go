@@ -48,7 +48,7 @@ type App struct {
 	query       string
 
 	rows         []row
-	colWidths    [3]float32
+	colWidths    [numCols]float32
 	missingCount int
 	statusTimer  *time.Timer
 
@@ -488,7 +488,13 @@ func (a *App) updateStats() {
 		}
 	}
 	if strings.TrimSpace(a.query) != "" {
-		parts = append(parts, Tn("stats.matches", len(a.rows)))
+		n := 0
+		for _, r := range a.rows {
+			if r.kind != rowSection {
+				n++
+			}
+		}
+		parts = append(parts, Tn("stats.matches", n))
 	}
 	a.statsLabel.SetText(strings.Join(parts, "  ·  "))
 }

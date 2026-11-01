@@ -42,6 +42,7 @@ envui lets you view and edit environment variables across multiple .env files fr
 - **Copy to other files**: Add a variable to several files at once.
 - **Recent projects and drag & drop**: Reopen recent projects, or drop a folder onto the window.
 - **Update notice**: Tells you in the status bar when a new version is out (can be turned off in Settings).
+- **Descriptions and sections**: The `#` lines above a variable appear in a "Description" column and can be edited in the variable editor. `# ==== / # Title / # ====` blocks become section headings in the table. Search also looks in descriptions.
 - **Comments and formatting preserved**: Comments, `export` lines, quotes and every line you didn't touch stay exactly as they were.
 
 ### Keyboard shortcuts
@@ -158,14 +159,44 @@ envui automatically discovers these files:
 
 `.env.example`, `.env.sample` and `.env.template` are treated as templates. Missing variables are worked out from them.
 
+## Documented files
+
+envui reads the descriptions in your `.env` file:
+
+```bash
+# ============================================================================
+# Database (SQL Server login)               ← section heading
+# ============================================================================
+# Upper limit for lock waits (ms)           ← description of db.lock_timeout_ms
+db.lock_timeout_ms=15000
+# User and password are required            ← description of db.username;
+db.username=                                  also shown (dimmed) for the
+db.password=                                  db.password right below it
+logger.level=debug # debug, info, warning   ← trailing comment
+```
+
+If you change a description in the editor it is written back as `#` lines. Deleting a variable also deletes its description lines. Section headings and other comments stay as they are.
+
+### How values are written
+
+Values you edit are written so that `.env` loaders (DelphiMVCFramework, Docker Compose, python-dotenv…) read them back unchanged:
+
+| Value | Written as |
+| --- | --- |
+| `logs\analytics` | `logs\analytics` (backslashes are kept as they are) |
+| `p#ro$x` | `'p#ro$x'` (single quotes when it has `#`, `$`, `"` or `\`) |
+| `hello world` | `"hello world"` |
+
 ## Secret detection
 
 Variables whose names contain these patterns are masked automatically:
 
-- `PASSWORD`, `SECRET`, `TOKEN`
-- `API_KEY`, `APIKEY`, `API_SECRET`
-- `PRIVATE_KEY`, `ACCESS_KEY`
-- `AUTH`, `CREDENTIAL`, `DSN`
+- `PASSWORD`, `PASSWD`, `SECRET`, `TOKEN`, `AUTH`, `CREDENTIAL`, `DSN`
+- `API_KEY`, `APIKEY`, `PRIVATE_KEY`, `ACCESS_KEY`
+- Turkish: `SIFRE` / `ŞİFRE`, `PAROLA`, `ANAHTAR`
+- A name part that is exactly `KEY`, `PWD` or `PASS` (e.g. `WEB_SERVICE_KEY`, `db.pwd`)
+
+Names that describe a length, duration or limit are not masked (e.g. `guvenlik.min_parola_uzunlugu`, `TOKEN_EXPIRE_MINUTES`).
 
 ## Development
 

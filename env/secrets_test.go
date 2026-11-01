@@ -23,6 +23,21 @@ func TestIsSecret(t *testing.T) {
 		{"HOST", false},
 		{"app_secret", true}, // case insensitive
 		{"ApiKey", true},     // case insensitive
+		{"WEB_SERVICE_KEY", true},
+		{"db.password", true},
+		{"db.parola", true},
+		{"guvenlik.sifreleme_anahtari", true},
+		{"SMTP_ŞİFRE", true},
+		{"db.pwd", true},
+		{"KEYBOARD_LAYOUT", false},
+		{"dmvc.server.port", false},
+		{"db.username", false},
+		{"guvenlik.min_parola_uzunlugu", false},
+		{"JWT_TOKEN_EXPIRE_MINUTES", false},
+		{"PASSWORD_MAX_LENGTH", false},
+		{"MAXMIND_LICENSE_KEY", true},
+		{"COUNTRY_API_KEY", true},
+		{"dmvc.login_throttle.max_attempts", false},
 	}
 
 	for _, tt := range tests {

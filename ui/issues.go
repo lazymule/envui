@@ -80,7 +80,7 @@ func (a *App) showIssues() {
 		if is.Index < len(f.Variables) {
 			d.Hide()
 			v := f.Variables[is.Index]
-			a.showVariableDialog(f, is.Index, v.Key, v.Value)
+			a.showVariableDialog(f, is.Index, v.Key, v.Value, "")
 		}
 	}
 

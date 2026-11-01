@@ -40,14 +40,31 @@ func FormatEnvFile(envFile *EnvFile) string {
 		}
 	}
 
+	// comment lines that are the (old) description of a variable that was
+	// deleted or whose description was edited are not written back
+	skip := make(map[int]bool)
+	for line, owner := range envFile.docOwner {
+		if v, ok := varByLine[owner]; !ok || v.DocChanged() {
+			skip[line] = true
+		}
+	}
+
 	var lines []string
 	written := make(map[*Variable]bool)
 	for i := 0; i <= maxLine; i++ {
+		if skip[i] {
+			continue
+		}
 		if comment, ok := envFile.Comments[i]; ok {
 			lines = append(lines, comment)
 		} else if v, ok := varByLine[i]; ok {
+			if v.DocChanged() {
+				lines = append(lines, docLines(v.Doc)...)
+			}
 			lines = append(lines, formatVariable(v))
 			written[v] = true
+		} else if envFile.varLines[i] {
+			continue // a deleted variable: drop its line instead of leaving a gap
 		} else {
 			lines = append(lines, "")
 		}
@@ -57,6 +74,7 @@ func FormatEnvFile(envFile *EnvFile) string {
 	for i := range envFile.Variables {
 		v := &envFile.Variables[i]
 		if !written[v] {
+			lines = append(lines, docLines(v.Doc)...)
 			lines = append(lines, formatVariable(v))
 		}
 	}
@@ -71,6 +89,24 @@ func FormatEnvFile(envFile *EnvFile) string {
 		nl = "\r\n"
 	}
 	return strings.Join(lines, nl) + nl
+}
+
+// docLines renders a description as "# " comment lines.
+func docLines(doc string) []string {
+	doc = strings.TrimRight(doc, "\n ")
+	if doc == "" {
+		return nil
+	}
+	var out []string
+	for _, l := range strings.Split(doc, "\n") {
+		l = strings.TrimRight(l, " \t\r")
+		if l == "" {
+			out = append(out, "#")
+		} else {
+			out = append(out, "# "+l)
+		}
+	}
+	return out
 }
 
 // formatVariable formats a variable for writing to file. Unchanged
@@ -93,18 +129,29 @@ func formatVariable(v *Variable) string {
 	return b.String()
 }
 
-// quoteValue returns value in a form that ParseEnv (and common dotenv
-// libraries) read back as exactly the same string.
+// quoteValue returns value in a form that ParseEnv and common dotenv
+// loaders (DelphiMVCFramework, Docker Compose, python-dotenv, godotenv)
+// read back as exactly the same string:
+//
+//   - plain values, including Windows paths with backslashes, stay unquoted
+//   - values with # $ " or \ (plus spaces) use single quotes, which every
+//     loader takes literally (no $VAR interpolation, no escapes)
+//   - values that only need quoting because of spaces use double quotes
+//   - values with a ' or a line break use double quotes with \ escapes
 func quoteValue(value string, preferred byte) string {
-	special := strings.ContainsAny(value, " \t\"'#\\\n\r") || strings.HasPrefix(value, "=")
-	if !special && preferred == 0 {
+	edgeSpace := value != strings.TrimSpace(value)
+	needs := edgeSpace || strings.ContainsAny(value, " \t#$\"'\n\r")
+	literalOnly := strings.ContainsAny(value, "#$\"\\")
+	canSingle := !strings.ContainsAny(value, "'\n\r")
+
+	switch {
+	case !needs && preferred == 0:
 		return value
-	}
-	// single quotes are literal: usable when the value has no ' or newline
-	if preferred == '\'' && !strings.ContainsAny(value, "'\n\r") {
+	case !needs && preferred == '"' && !literalOnly:
+		return `"` + value + `"`
+	case canSingle && (literalOnly || preferred == '\''):
 		return "'" + value + "'"
-	}
-	if !special && preferred == '"' {
+	case !strings.ContainsAny(value, "\n\r\"\\") && !strings.Contains(value, "$"):
 		return `"` + value + `"`
 	}
 	r := strings.NewReplacer(`\`, `\\`, `"`, `\"`, "\n", `\n`, "\r", `\r`)
