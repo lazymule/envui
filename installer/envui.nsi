@@ -3,8 +3,9 @@
 ; Build (see tools/package_windows.sh):
 ;   makensis -DVERSION=0.3.0 -DSRCDIR=path\to\files -DOUTFILE=envui-setup.exe installer/envui.nsi
 ;
-; SRCDIR must contain envui.exe; if it also contains opengl32.dll and
-; libgallium_wgl.dll, an optional "software OpenGL" component is offered.
+; SRCDIR must contain envui.exe and a softgl folder (envui.exe, opengl32.dll,
+; libgallium_wgl.dll). envui switches to softgl by itself on machines
+; without a usable OpenGL driver.
 
 Unicode true
 SetCompressor /SOLID lzma
@@ -70,10 +71,6 @@ LangString SecDesktop  ${LANG_TURKISH} "Masaüstü kısayolu"
 LangString SecDesktop  ${LANG_ENGLISH} "Desktop shortcut"
 LangString SecDesktopD ${LANG_TURKISH} "Masaüstüne envui kısayolu ekler."
 LangString SecDesktopD ${LANG_ENGLISH} "Adds an envui shortcut to the desktop."
-LangString SecSoftGL   ${LANG_TURKISH} "Yazılımsal OpenGL (sanal makine / Uzak Masaüstü)"
-LangString SecSoftGL   ${LANG_ENGLISH} "Software OpenGL (virtual machine / Remote Desktop)"
-LangString SecSoftGLD  ${LANG_TURKISH} "Yalnızca 'WGL: The driver does not appear to support OpenGL' hatası alıyorsanız seçin. Mesa ile çizimi işlemci yapar."
-LangString SecSoftGLD  ${LANG_ENGLISH} "Only select this if you get 'WGL: The driver does not appear to support OpenGL'. Uses Mesa to render on the CPU."
 
 Function .onInit
   !insertmacro MUI_LANGDLL_DISPLAY
@@ -95,6 +92,13 @@ Section "!$(SecMain)" SEC_MAIN
   File "${SRCDIR}\envui.exe"
   File "/oname=LICENSE.txt" "..\LICENSE"
 
+  ; software OpenGL fallback for virtual machines / Remote Desktop
+  SetOutPath "$INSTDIR\softgl"
+  File "${SRCDIR}\softgl\envui.exe"
+  File "${SRCDIR}\softgl\opengl32.dll"
+  File "${SRCDIR}\softgl\libgallium_wgl.dll"
+  SetOutPath "$INSTDIR"
+
   CreateShortcut "$SMPROGRAMS\envui.lnk" "$INSTDIR\envui.exe"
 
   WriteUninstaller "$INSTDIR\uninstall.exe"
@@ -114,27 +118,19 @@ Section "$(SecDesktop)" SEC_DESKTOP
   CreateShortcut "$DESKTOP\envui.lnk" "$INSTDIR\envui.exe"
 SectionEnd
 
-!if /FileExists "${SRCDIR}\libgallium_wgl.dll"
-Section /o "$(SecSoftGL)" SEC_SOFTGL
-  SetOutPath "$INSTDIR"
-  File "${SRCDIR}\opengl32.dll"
-  File "${SRCDIR}\libgallium_wgl.dll"
-SectionEnd
-!endif
 
 !insertmacro MUI_FUNCTION_DESCRIPTION_BEGIN
   !insertmacro MUI_DESCRIPTION_TEXT ${SEC_MAIN} $(SecMainD)
   !insertmacro MUI_DESCRIPTION_TEXT ${SEC_DESKTOP} $(SecDesktopD)
-  !if /FileExists "${SRCDIR}\libgallium_wgl.dll"
-    !insertmacro MUI_DESCRIPTION_TEXT ${SEC_SOFTGL} $(SecSoftGLD)
-  !endif
 !insertmacro MUI_FUNCTION_DESCRIPTION_END
 
 Section "Uninstall"
   Delete "$INSTDIR\envui.exe"
   Delete "$INSTDIR\LICENSE.txt"
-  Delete "$INSTDIR\opengl32.dll"
-  Delete "$INSTDIR\libgallium_wgl.dll"
+  Delete "$INSTDIR\softgl\envui.exe"
+  Delete "$INSTDIR\softgl\opengl32.dll"
+  Delete "$INSTDIR\softgl\libgallium_wgl.dll"
+  RMDir "$INSTDIR\softgl"
   Delete "$INSTDIR\uninstall.exe"
   RMDir "$INSTDIR"
   Delete "$SMPROGRAMS\envui.lnk"

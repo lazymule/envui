@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 
 	"fyne.io/fyne/v2"
@@ -36,11 +37,18 @@ func portablePath() string {
 	if resolved, err := filepath.EvalSymlinks(exe); err == nil {
 		exe = resolved
 	}
-	p := filepath.Join(filepath.Dir(exe), PortableFileName)
-	if _, err := os.Stat(p); err != nil {
-		return ""
+	dir := filepath.Dir(exe)
+	candidates := []string{filepath.Join(dir, PortableFileName)}
+	// the software-OpenGL copy in "softgl" shares the main folder's settings
+	if strings.EqualFold(filepath.Base(dir), "softgl") {
+		candidates = append(candidates, filepath.Join(filepath.Dir(dir), PortableFileName))
 	}
-	return p
+	for _, p := range candidates {
+		if _, err := os.Stat(p); err == nil {
+			return p
+		}
+	}
+	return ""
 }
 
 // filePrefs stores preferences as JSON in a single file.

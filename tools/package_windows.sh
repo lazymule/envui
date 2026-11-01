@@ -1,11 +1,14 @@
 #!/usr/bin/env bash
 # Builds every Windows download into dist/:
 #
-#   envui-windows-amd64.exe   plain executable
-#   envui-setup.exe           installer (Start menu, uninstall, optional Mesa)
+#   envui-windows-amd64.exe   plain executable (no software-OpenGL fallback)
+#   envui-setup.exe           installer (Start menu, uninstall)
 #   envui-portable.zip        portable edition (settings next to the exe)
-#   envui-portable-vm.zip     portable edition + Mesa software OpenGL for
-#                             virtual machines / Remote Desktop
+#
+# The installer and the portable zip include a "softgl" folder with a copy of
+# envui.exe and Mesa's software OpenGL renderer. envui.exe switches to it by
+# itself on machines without a usable OpenGL driver (virtual machines,
+# Remote Desktop), so one package works everywhere.
 #
 # Needs: go, x86_64-w64-mingw32-gcc, curl, 7z, zip, makensis
 # Usage: tools/package_windows.sh [version] [mesa-version]
@@ -30,35 +33,20 @@ curl -fsSL -o "$WORK/mesa.7z" \
   "https://github.com/pal1000/mesa-dist-win/releases/download/$MESA_VERSION/mesa3d-$MESA_VERSION-release-msvc.7z"
 7z e -y -o"$WORK/mesa" "$WORK/mesa.7z" x64/opengl32.dll x64/libgallium_wgl.dll >/dev/null
 
-readme() { # $1 = with Mesa (yes/no)
-  local tr="" en="" lic=""
-  if [ "$1" = yes ]; then
-    tr="SANAL MAKİNE / UZAK MASAÜSTÜ\n----------------------------\nBu pakette Mesa'nın yazılımsal OpenGL sürücüsü (opengl32.dll,\nlibgallium_wgl.dll) vardır. 'WGL: The driver does not appear to support\nOpenGL' hatası veren bilgisayarlarda çizimi işlemci yapar. Dosyaları\nenvui.exe ile aynı klasörde tutun. Diğer programlar etkilenmez.\n"
-    en="\nThis package also contains Mesa's software OpenGL renderer for virtual\nmachines and Remote Desktop (fixes 'WGL: The driver does not appear to\nsupport OpenGL'). Keep the DLLs next to envui.exe."
-    lic="Mesa $MESA_VERSION (opengl32.dll, libgallium_wgl.dll): MIT Lisansı - https://www.mesa3d.org/"
-  fi
-  sed -e "s|@VM_NOTE_TR@|$tr|" -e "s|@VM_NOTE_EN@|$en|" -e "s|@MESA_LICENSE@|$lic|" "$ROOT/tools/portable-readme.txt" \
-    | sed 's/\\n/\n/g'
-}
-
-portable() { # $1 = name, $2 = with Mesa
-  local dir="$WORK/$1"
-  mkdir -p "$dir"
-  cp "$WORK/envui.exe" "$dir/"
-  echo '{}' > "$dir/envui-portable.json"
-  readme "$2" > "$dir/OKUBENI.txt"
-  if [ "$2" = yes ]; then cp "$WORK/mesa/"*.dll "$dir/"; fi
-  rm -f "$DIST/$1.zip"
-  (cd "$WORK" && zip -9 -r -q "$DIST/$1.zip" "$1")
-  echo "   $DIST/$1.zip"
-}
-
 echo "== portable"
-portable envui-portable no
-portable envui-portable-vm yes
+P="$WORK/envui-portable"
+mkdir -p "$P/softgl"
+cp "$WORK/envui.exe" "$P/"
+cp "$WORK/envui.exe" "$WORK/mesa/"*.dll "$P/softgl/"
+echo '{}' > "$P/envui-portable.json"
+sed "s|@MESA_VERSION@|$MESA_VERSION|g" "$ROOT/tools/portable-readme.txt" > "$P/OKUBENI.txt"
+rm -f "$DIST/envui-portable.zip" "$DIST/envui-portable-vm.zip"
+(cd "$WORK" && zip -9 -r -q "$DIST/envui-portable.zip" envui-portable)
+echo "   $DIST/envui-portable.zip"
 
 echo "== installer"
-mkdir -p "$WORK/inst"
-cp "$WORK/envui.exe" "$WORK/mesa/"*.dll "$WORK/inst/"
+mkdir -p "$WORK/inst/softgl"
+cp "$WORK/envui.exe" "$WORK/inst/"
+cp "$WORK/envui.exe" "$WORK/mesa/"*.dll "$WORK/inst/softgl/"
 (cd "$ROOT/installer" && makensis -V2 -DVERSION="$VERSION" -DSRCDIR="$WORK/inst" -DOUTFILE="$DIST/envui-setup.exe" envui.nsi)
 echo "   $DIST/envui-setup.exe"

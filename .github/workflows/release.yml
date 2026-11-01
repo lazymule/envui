@@ -42,7 +42,7 @@ jobs:
           VERSION="${TAG#v}"
           mkdir -p dist
 
-          # Windows: exe, installer and portable zips (with/without Mesa)
+          # Windows: exe, installer and portable zip (both with the softgl fallback)
           tools/package_windows.sh "${VERSION}"
 
           # Linux
@@ -50,7 +50,7 @@ jobs:
           tar -C dist -czf dist/envui-linux-amd64.tar.gz envui
 
           cd dist
-          sha256sum envui-setup.exe envui-windows-amd64.exe envui-portable.zip envui-portable-vm.zip \
+          sha256sum envui-setup.exe envui-windows-amd64.exe envui-portable.zip \
             envui-linux-amd64.tar.gz > SHA256SUMS.txt
           cat SHA256SUMS.txt
 
@@ -62,10 +62,11 @@ jobs:
             echo
             echo "| Dosya | Ne zaman? |"
             echo "| --- | --- |"
-            echo "| \`envui-setup.exe\` | **Windows kurulum** (önerilen). Başlat menüsü kısayolu ve kaldırma desteği. Sanal makine için \"Yazılımsal OpenGL\" bileşenini seçin. |"
+            echo "| \`envui-setup.exe\` | **Windows kurulum** (önerilen). Başlat menüsü kısayolu ve kaldırma desteği. |"
             echo "| \`envui-portable.zip\` | Windows **taşınabilir** sürüm: kurulum yok, ayarlar programın yanında saklanır (USB bellek). |"
-            echo "| \`envui-portable-vm.zip\` | Taşınabilir sürüm + Mesa: **sanal makine / Uzak Masaüstü** (\"WGL: The driver does not appear to support OpenGL\" hatası). |"
-            echo "| \`envui-windows-amd64.exe\` | Yalnızca program dosyası |"
+            echo "| \`envui-windows-amd64.exe\` | Yalnızca program dosyası (sanal makine desteği yok) |"
+            echo
+            echo "Kurulum ve taşınabilir sürüm sanal makinelerde ve Uzak Masaüstünde de çalışır: ekran kartı OpenGL desteklemiyorsa envui otomatik olarak yazılımsal çizime geçer. / The installer and the portable edition also work in virtual machines and Remote Desktop: envui switches to software rendering automatically when the graphics driver lacks OpenGL."
             echo "| \`envui-linux-amd64.tar.gz\` | Linux (x86-64) |"
             echo
             echo "## Değişiklikler / Changes"
@@ -93,7 +94,6 @@ jobs:
           files: |
             dist/envui-setup.exe
             dist/envui-portable.zip
-            dist/envui-portable-vm.zip
             dist/envui-windows-amd64.exe
             dist/envui-linux-amd64.tar.gz
             dist/SHA256SUMS.txt

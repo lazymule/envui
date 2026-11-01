@@ -19,8 +19,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Recent projects (header button and start screen) and opening a folder by drag and drop
 - Update notice in the status bar (daily check, can be turned off) and "Check for updates" in About
 - Portable edition: settings are kept in `envui-portable.json` next to the exe
-- Windows installer (`envui-setup.exe`) with Start menu / desktop shortcuts, uninstaller and an optional software OpenGL component
-- `tools/package_windows.sh` builds the exe, installer and portable zips (replaces `package_vm.sh`)
+- Windows installer (`envui-setup.exe`) with Start menu / desktop shortcuts and uninstaller
+- Automatic software-OpenGL fallback: the installer and the portable zip include a `softgl` folder (envui.exe + Mesa); envui probes the OpenGL driver at start and switches to it on virtual machines / Remote Desktop. The separate VM package is no longer needed (`ENVUI_SOFTWARE_GL=1` forces it)
+- `tools/package_windows.sh` builds the exe, installer and portable zip (replaces `package_vm.sh`)
 
 ### Changed
 

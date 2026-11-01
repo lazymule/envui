@@ -68,8 +68,9 @@ macOS'ta `Ctrl` yerine `Cmd` kullanılır.
 | --- | --- |
 | `envui-setup.exe` | **Önerilen.** Kurulum sihirbazı, Başlat menüsü kısayolu ve kaldırma desteği. |
 | `envui-portable.zip` | **Taşınabilir** sürüm: kurulum yok, ayarlar programın yanındaki `envui-portable.json` dosyasında tutulur. USB bellek için ideal. |
-| `envui-portable-vm.zip` | Taşınabilir sürüm + yazılımsal OpenGL: **sanal makine / Uzak Masaüstü** için. |
-| `envui-windows-amd64.exe` | Yalnızca program dosyası. |
+| `envui-windows-amd64.exe` | Yalnızca program dosyası (sanal makine desteği yok). |
+
+Kurulum ve taşınabilir sürüm, sanal makinelerde ve Uzak Masaüstünde de ek bir işlem gerektirmeden çalışır (bkz. [Sorun giderme](#sorun-giderme)).
 
 ### Kaynaktan derleme
 
@@ -122,7 +123,9 @@ Windows'ta `envui.exe` dosyasına çift tıklamanız yeterli.
 
 envui pencereyi çizmek için OpenGL 2.1 kullanır. Sanal makinelerde (VirtualBox, Hyper-V, VMware), Uzak Masaüstü (RDP) oturumlarında ve ekran kartı sürücüsü olmayan bilgisayarlarda OpenGL bulunmayabilir.
 
-**Çözüm:** `envui-portable-vm.zip` paketini kullanın ya da kurulumda **"Yazılımsal OpenGL"** bileşenini seçin. Bu, envui.exe'nin yanına Mesa'nın yazılımsal OpenGL sürücüsünü (`opengl32.dll`, `libgallium_wgl.dll`) ekler. envui bu dosyaları kendi klasöründe görünce çizimi ekran kartı yerine işlemciyle yapar. Sistemdeki diğer programlar etkilenmez.
+**Çözüm:** Kurulumu (`envui-setup.exe`) ya da taşınabilir sürümü (`envui-portable.zip`) kullanın. İkisinde de bir `softgl` klasörü vardır: içinde envui.exe'nin bir kopyası ve Mesa'nın yazılımsal OpenGL sürücüsü (`opengl32.dll`, `libgallium_wgl.dll`) bulunur. envui açılırken bilgisayarın OpenGL desteğini kısaca yoklar; yetersizse kendini otomatik olarak `softgl` içinden başlatır ve çizimi işlemciyle yapar. Ekran kartı olan bilgisayarlarda normal (hızlı) yol kullanılır, sistemdeki diğer programlar etkilenmez. Hakkında penceresindeki "Grafik" satırı hangi yolun kullanıldığını gösterir.
+
+Yazılımsal çizimi zorlamak için `ENVUI_SOFTWARE_GL=1` ortam değişkenini ayarlayabilirsiniz.
 
 Ekran kartı olan bir bilgisayara RDP ile bağlanıyorsanız, uzak bilgisayarda şu Grup İlkesi ayarını etkinleştirmek de işe yarar: *Uzak Masaüstü Oturumu Ana Bilgisayarı → Uzak Oturum Ortamı → "Tüm Uzak Masaüstü Hizmetleri oturumları için donanım grafik bağdaştırıcılarını kullan"*.
 
@@ -183,7 +186,7 @@ Simgeyi yeniden üretmek için `python3 tools/make_icon.py` komutunu çalıştı
 x86_64-w64-mingw32-windres -O coff -i winres/envui.rc -o rsrc_windows_amd64.syso
 ```
 
-Tüm Windows paketlerini (exe, kurulum, taşınabilir zip'ler) üretmek için (`go`, `x86_64-w64-mingw32-gcc`, `7z`, `zip`, `makensis` gerekir):
+Tüm Windows paketlerini (exe, kurulum, taşınabilir zip) üretmek için (`go`, `x86_64-w64-mingw32-gcc`, `7z`, `zip`, `makensis` gerekir):
 
 ```bash
 tools/package_windows.sh

@@ -68,8 +68,9 @@ Pick one from the [Releases](https://github.com/lazymule/envui/releases) page:
 | --- | --- |
 | `envui-setup.exe` | **Recommended.** Installer with Start menu shortcut and uninstall support. |
 | `envui-portable.zip` | **Portable** edition: no installation, settings are kept in `envui-portable.json` next to the program. Great for USB sticks. |
-| `envui-portable-vm.zip` | Portable edition + software OpenGL, for **virtual machines / Remote Desktop**. |
-| `envui-windows-amd64.exe` | Just the program file. |
+| `envui-windows-amd64.exe` | Just the program file (no virtual machine support). |
+
+The installer and the portable edition also work in virtual machines and Remote Desktop without any extra steps (see [Troubleshooting](#troubleshooting)).
 
 ### From source
 
@@ -122,7 +123,9 @@ On Windows, just double-click `envui.exe`.
 
 envui draws its window with OpenGL 2.1. Virtual machines (VirtualBox, Hyper-V, VMware), Remote Desktop (RDP) sessions and computers without a graphics driver may not provide it.
 
-**Fix:** use `envui-portable-vm.zip`, or tick the **"Software OpenGL"** component in the installer. This puts Mesa's software OpenGL renderer (`opengl32.dll`, `libgallium_wgl.dll`) next to envui.exe. When envui finds these files in its own folder, it renders with the CPU instead of the graphics card. Other programs are not affected.
+**Fix:** use the installer (`envui-setup.exe`) or the portable edition (`envui-portable.zip`). Both contain a `softgl` folder with a copy of envui.exe and Mesa's software OpenGL renderer (`opengl32.dll`, `libgallium_wgl.dll`). At start, envui quickly probes the computer's OpenGL support; if it isn't good enough, envui restarts itself from `softgl` and renders with the CPU. Computers with a graphics card keep the normal (fast) path, and other programs are not affected. The "Graphics" row in the About dialog shows which path is in use.
+
+Set the `ENVUI_SOFTWARE_GL=1` environment variable to force software rendering.
 
 If you connect over RDP to a computer that has a graphics card, enabling this Group Policy on the remote computer also helps: *Remote Desktop Session Host → Remote Session Environment → "Use hardware graphics adapters for all Remote Desktop Services sessions"*.
 
@@ -183,7 +186,7 @@ To regenerate the icon, run `python3 tools/make_icon.py`, then refresh the Windo
 x86_64-w64-mingw32-windres -O coff -i winres/envui.rc -o rsrc_windows_amd64.syso
 ```
 
-To build every Windows package (exe, installer, portable zips; needs `go`, `x86_64-w64-mingw32-gcc`, `7z`, `zip`, `makensis`):
+To build every Windows package (exe, installer, portable zip; needs `go`, `x86_64-w64-mingw32-gcc`, `7z`, `zip`, `makensis`):
 
 ```bash
 tools/package_windows.sh
