@@ -26,9 +26,10 @@ func main() {
 	appUI := ui.NewApp(a, w)
 	w.SetContent(appUI.BuildUI())
 
-	// If a path was provided as argument, load it
+	// A folder or an env file given on the command line (also used by the
+	// "Open with envui" entry of the Windows context menu)
 	if len(os.Args) > 1 {
-		if err := appUI.LoadProject(os.Args[1]); err != nil {
+		if err := appUI.OpenPath(os.Args[1]); err != nil {
 			dialog.ShowError(err, w)
 		}
 	}

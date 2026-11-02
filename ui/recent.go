@@ -3,12 +3,15 @@ package ui
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
+
+	"github.com/mrf/envui/env"
 )
 
 const (
@@ -102,22 +105,55 @@ func (a *App) onDropped(_ fyne.Position, uris []fyne.URI) {
 		return
 	}
 	path := uris[0].Path()
-	info, err := os.Stat(path)
-	if err != nil {
-		a.showError(err)
-		return
-	}
-	dir, file := path, ""
-	if !info.IsDir() {
-		dir, file = filepath.Dir(path), path
-	}
 	a.confirmDiscard(func() {
-		if err := a.LoadProject(dir); err != nil {
+		if err := a.OpenPath(path); err != nil {
 			a.showError(err)
-			return
-		}
-		if file != "" {
-			a.selectFile(file)
 		}
 	})
+}
+
+// OpenPath opens a project folder, or the folder of an env file with that
+// file selected (used for command-line arguments, "Open with envui" and drag
+// and drop). A file envui wouldn't list by itself is added to the list.
+func (a *App) OpenPath(path string) error {
+	abs, err := filepath.Abs(path)
+	if err != nil {
+		return err
+	}
+	info, err := os.Stat(abs)
+	if err != nil {
+		return err
+	}
+	if info.IsDir() {
+		return a.LoadProject(abs)
+	}
+	if err := a.LoadProject(filepath.Dir(abs)); err != nil {
+		return err
+	}
+	for _, f := range a.project.Files {
+		if samePath(f.Path, abs) {
+			a.selectFile(f.Path)
+			return nil
+		}
+	}
+	f, err := env.ParseEnvFile(abs)
+	if err != nil {
+		return err
+	}
+	a.project.Files = append(a.project.Files, f)
+	a.markSaved(f)
+	a.checkGit()
+	a.showView()
+	a.refresh()
+	a.selectFile(f.Path)
+	return nil
+}
+
+// samePath compares file paths, ignoring case on Windows.
+func samePath(x, y string) bool {
+	x, y = filepath.Clean(x), filepath.Clean(y)
+	if runtime.GOOS == "windows" {
+		return strings.EqualFold(x, y)
+	}
+	return x == y
 }

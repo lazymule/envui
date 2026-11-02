@@ -73,6 +73,8 @@ macOS'ta `Ctrl` yerine `Cmd` kullanılır.
 
 Kurulum ve taşınabilir sürüm, sanal makinelerde ve Uzak Masaüstünde de ek bir işlem gerektirmeden çalışır (bkz. [Sorun giderme](#sorun-giderme)).
 
+Kurulum sırasında size **sağ tık menüsü** sorulur: isterseniz `.env`, `.env.local`, `.env.example` gibi dosyalara sağ tıkladığınızda **"envui ile aç"** seçeneği çıkar. Kutu boş gelir; işaretlemezseniz hiçbir şey eklenmez, varsayılan programınız hiçbir durumda değişmez. Kararınızı kurulumu yeniden çalıştırarak değiştirebilirsiniz. Sessiz kurulumda (`/S`) eklemek için `/CONTEXTMENU=1` verin.
+
 ### Kaynaktan derleme
 
 ```bash
@@ -116,7 +118,13 @@ Ya da bir proje klasörünü doğrudan açın:
 ./envui ~/Projeler/uygulamam
 ```
 
-Windows'ta `envui.exe` dosyasına çift tıklamanız yeterli.
+Ya da bir dosyayı doğrudan açın; klasörü açılır ve o dosya seçili gelir:
+
+```bash
+./envui ~/Projeler/uygulamam/.env.local
+```
+
+Windows'ta `envui.exe` dosyasına çift tıklamanız yeterli. Klasördeki `.env` ve `.env.*` ile başlayan bütün dosyalar listelenir (`.env.docker`, `.env.dev` gibi); yedek dosyaları (`.bak`, `.swp`, `~`) atlanır.
 
 ## Sorun giderme
 
