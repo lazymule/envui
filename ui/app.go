@@ -707,7 +707,7 @@ func (a *App) onReload() {
 
 func (a *App) selectFile(path string) {
 	for i, f := range a.project.Files {
-		if f.Path == path {
+		if samePath(f.Path, path) {
 			a.fileList.Select(i)
 			return
 		}

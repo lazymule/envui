@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-11-02
+
+### Added
+
+- Installer asks (on its own page, unticked by default) whether to add "Open with envui" to the right-click menu of `.env` and `.env.*` files; the default program is never changed. Silent installs add it only with `/CONTEXTMENU=1`; upgrades keep the earlier choice; uninstall removes it
+- A file can be given on the command line (and via the context menu or drag and drop): its folder opens with that file selected, and a file envui wouldn't list by itself is added
+
+### Changed
+
+- Every `.env.*` file in the folder is listed (e.g. `.env.docker`, `.env.dev`), after the well-known names; editor backups are skipped
+
 ## [0.4.0] - 2026-11-01
 
 ### Added

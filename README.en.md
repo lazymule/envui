@@ -73,6 +73,8 @@ Pick one from the [Releases](https://github.com/lazymule/envui/releases) page:
 
 The installer and the portable edition also work in virtual machines and Remote Desktop without any extra steps (see [Troubleshooting](#troubleshooting)).
 
+The installer **asks** whether to add a context-menu entry: if you want, right-clicking `.env`, `.env.local`, `.env.example` and similar files shows **"Open with envui"**. The box starts unticked; if you leave it, nothing is added, and your default program is never changed. Run the installer again to change your mind. For a silent install (`/S`) pass `/CONTEXTMENU=1` to add it.
+
 ### From source
 
 ```bash
@@ -116,7 +118,13 @@ Or open a project folder directly:
 ./envui ~/Projects/my-app
 ```
 
-On Windows, just double-click `envui.exe`.
+Or open a file directly; its folder opens with that file selected:
+
+```bash
+./envui ~/Projects/my-app/.env.local
+```
+
+On Windows, just double-click `envui.exe`. Every file in the folder named `.env` or starting with `.env.` is listed (such as `.env.docker` or `.env.dev`); backups (`.bak`, `.swp`, `~`) are skipped.
 
 ## Troubleshooting
 
